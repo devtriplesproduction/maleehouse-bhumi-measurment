@@ -1,11 +1,10 @@
-export type Role = "admin" | "sales" | "accountant" | "engineer" | "cad" | "field" | "hr" | "developer";
+export type Role = "admin" | "sales" | "accountant" | "engineer" | "field" | "hr" | "developer";
 
 export const ROLES = {
   ADMIN: "admin" as Role,
   SALES: "sales" as Role,
   ACCOUNTANT: "accountant" as Role,
   ENGINEER: "engineer" as Role,
-  CAD: "cad" as Role,
   FIELD: "field" as Role,
   HR: "hr" as Role,
   DEVELOPER: "developer" as Role,
@@ -17,7 +16,6 @@ export const ROLE_REDIRECTS: Record<Role, string> = {
   sales: "/sales",
   accountant: "/accounts",
   engineer: "/engineer",
-  cad: "/cad",
   field: "/field",
   hr: "/hr",
   developer: "/developer/dashboard",
@@ -31,16 +29,14 @@ export const PATH_PERMISSIONS: Record<string, Role[]> = {
   "/accounts/audit": ["admin"],
   "/accounts/payroll": ["admin", "accountant"],
   "/accounts": ["admin", "accountant", "sales"], // Sales can view accounts pipeline
-  "/operations": ["admin", "engineer", "cad", "field"],
+  "/operations": ["admin", "engineer", "field"],
   "/review": ["admin", "engineer"],
   "/engineer": ["admin", "engineer"],
-  "/cad": ["admin", "cad"],
   "/field": ["admin", "field"],
-  "/eod": ["admin", "sales", "accountant", "engineer", "cad", "field", "hr"],
-  "/sop": ["admin", "sales", "accountant", "engineer", "cad", "field", "hr"],
-  "/leaves": ["admin", "sales", "accountant", "engineer", "cad", "field", "hr"],
-  "/projects": ["admin", "sales", "accountant", "engineer", "cad", "field", "hr"],
+  "/eod": ["admin", "sales", "accountant", "engineer", "field", "hr"],
+  "/sop": ["admin", "sales", "accountant", "engineer", "field", "hr"],
+  "/leaves": ["admin", "sales", "accountant", "engineer", "field", "hr"],
+  "/projects": ["admin", "sales", "accountant", "engineer", "field", "hr"],
   "/hr": ["admin", "hr"],
   "/developer": ["developer"],
 };
-

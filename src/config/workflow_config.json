@@ -18,15 +18,6 @@
       "payment_gate": "milestone_1",
       "required_files": ["survey_data"]
     },
-    "prototype": {
-      "display_name": "CAD Prototype & Drafts",
-      "allowed_roles": ["admin", "engineer", "cad"],
-      "allow_rollback": true,
-      "transitions_to": ["field_work"],
-      "task_generation": ["tsk_draft_v1", "tsk_internal_cad_check"],
-      "payment_gate": "milestone_2",
-      "required_files": ["cad_drawing"]
-    },
     "field_work": {
       "display_name": "Secondary Ground Staking",
       "allowed_roles": ["admin", "engineer", "field"],
@@ -78,7 +69,7 @@
     "drone_mapping": {
       "display_name": "Drone Mapping",
       "pipeline": ["project_created", "data_collection", "data_sync", "review", "completed"],
-      "billing_milestones": ["milestone_1", "milestone_2"]
+      "billing_milestones": ["milestone_1"]
     },
     "boundary_survey": {
       "display_name": "Boundary Survey",
@@ -88,7 +79,7 @@
     "road_alignment_survey": {
       "display_name": "Road Alignment Survey",
       "pipeline": ["project_created", "data_collection", "field_work", "data_sync", "review", "completed"],
-      "billing_milestones": ["milestone_1", "milestone_2", "milestone_final"]
+      "billing_milestones": ["milestone_1", "milestone_final"]
     }
   }
 }

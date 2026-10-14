@@ -18,10 +18,9 @@ export const PERMISSIONS = {
     sales: ["lead_created", "quotation_requested", "quotation_sent", "payment_pending"],
     accountant: ["quotation_sent", "payment_pending", "payment_done", "ready_for_dispatch", "project_created", "quotation_requested"],
     engineer: [
-      "data_collection", "prototype", "field_work", "data_sync",
-      "field_assigned", "cad_approved", "review", "payment_pending", "completed", "final_review"
+      "data_collection", "field_work", "data_sync",
+      "field_assigned", "review", "payment_pending", "completed", "final_review"
     ],
-    cad: ["prototype", "cad_revision", "cad_submitted", "data_sync", "review", "field_assigned", "field_work", "completed", "final_review"],
     field: ["field_work", "field_assigned", "field_in_progress", "field_completed", "data_sync"],
     hr: [],
     developer: [],
@@ -32,8 +31,7 @@ export const PERMISSIONS = {
     admin: ["*"],
     sales: ["quotation", "requirements"],
     accountant: ["receipt"],
-    engineer: ["requirements", "prototype", "survey_data", "final_file", "technical_doc"],
-    cad: ["prototype", "cad_drawing", "final_file"],
+    engineer: ["requirements", "survey_data", "final_file", "technical_doc"],
     field: ["survey_data", "site_photo", "field_report"],
     hr: [],
     developer: [],

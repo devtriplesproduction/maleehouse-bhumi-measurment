@@ -372,13 +372,6 @@ async function validateStageTransition(
             error: "Cannot transition to Field Work: No technical team is assigned to this project."
           };
         }
-        const { data: revisions } = await supabase.from("cad_revisions").select("id").eq("project_id", projectId).eq("status", "approved").limit(1);
-        if (!revisions || revisions.length === 0) {
-          return {
-            success: false,
-            error: "Cannot transition to Field Work: Initial CAD prototype must be approved by the Engineer first."
-          };
-        }
         break;
       }
       case "data_sync": {
@@ -399,20 +392,6 @@ async function validateStageTransition(
           return {
             success: false,
             error: "Cannot complete project: A final deliverable file must be uploaded before completion."
-          };
-        }
-
-        // Gate 2: CAD Specialist must be assigned
-        const { data: cadAssignment } = await supabase
-          .from("project_assignments")
-          .select("id")
-          .eq("project_id", projectId)
-          .eq("role", "cad")
-          .limit(1);
-        if (!cadAssignment || cadAssignment.length === 0) {
-          return {
-            success: false,
-            error: "Cannot complete project: A CAD Specialist must be assigned before completion."
           };
         }
 

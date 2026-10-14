@@ -9,7 +9,8 @@ import {
   ClipboardCheck,
   Send,
   Loader2,
-  XCircle
+  XCircle,
+  CheckCircle2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -314,7 +315,7 @@ export function OperationsControlCenter({
     switch (projectStatus) {
       case 'project_created':
         return {
-          action: "Accept & Begin Field Work",
+          action: "Accept & Begin Data Collection",
           nextStage: "data_collection",
           icon: MapPin,
           color: "text-sky-500",
@@ -322,25 +323,9 @@ export function OperationsControlCenter({
         };
       case 'data_collection':
         return {
-          action: "Send to CAD for Prototype",
-          nextStage: "prototype",
-          icon: PenTool,
-          color: "text-purple-500",
-          bgColor: "bg-purple-500/10"
-        };
-      case 'prototype':
-        return {
-          action: "Submit CAD Prototype for Review",
-          nextStage: "review",
-          icon: ClipboardCheck,
-          color: "text-indigo-500",
-          bgColor: "bg-indigo-500/10"
-        };
-      case 'review':
-        return {
-          action: "Approve for Field Assignment",
+          action: "Assign Field Team",
           nextStage: "field_assigned",
-          icon: PenTool,
+          icon: MapPin,
           color: "text-sky-500",
           bgColor: "bg-sky-500/10"
         };
@@ -359,6 +344,22 @@ export function OperationsControlCenter({
           icon: MapPin,
           color: "text-cyan-500",
           bgColor: "bg-cyan-500/10"
+        };
+      case 'data_sync':
+        return {
+          action: "Prepare Final Deliverable",
+          nextStage: "final_review",
+          icon: ClipboardCheck,
+          color: "text-indigo-500",
+          bgColor: "bg-indigo-500/10"
+        };
+      case 'final_review':
+        return {
+          action: "Complete Project",
+          nextStage: "completed",
+          icon: CheckCircle2,
+          color: "text-emerald-500",
+          bgColor: "bg-emerald-500/10"
         };
       default:
         return null;

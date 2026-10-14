@@ -20,7 +20,7 @@ Verify: `GET /api/health` → `"status":"ok"` (public body is status/latency onl
 
 Apply in order (or `supabase db push`):
 
-1. `20260724000002_distributed_rate_limiting.sql`
+1. `20260724000003_distributed_rate_limiting.sql`
 2. `20260731140000_production_hot_indexes.sql`
 3. `20260731150000_admin_kpis_and_finance_summary.sql`
 4. `20260731160000_sync_auth_claims_role_active.sql`

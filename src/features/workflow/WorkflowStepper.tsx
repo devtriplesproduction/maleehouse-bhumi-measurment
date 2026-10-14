@@ -27,8 +27,6 @@ export const STAGE_ORDER: ProjectStage[] = [
   "payment_done",
   "project_created",
   "data_collection",
-  "prototype",
-  "review",
   "field_work",
   "data_sync",
   "final_review",

@@ -294,8 +294,8 @@ export function OperationsFileUploadPanel({
     }
   };
 
-  const handleSendToCAD = () => {
-    setLoadingAction('send_to_cad');
+  const handleSendToField = () => {
+    setLoadingAction('send_to_field');
     startTransition(async () => {
       // Auto-claim the project for the engineer if not already assigned
       const { claimProjectAction } = await import("@/actions/operations.actions");
@@ -303,13 +303,13 @@ export function OperationsFileUploadPanel({
 
       const res = await updateProjectStageAction(
         projectId,
-        'prototype',
-        'Client documents uploaded. Dispatched to CAD engineer for prototype drawing.'
+        'field_assigned',
+        'Client documents uploaded. Dispatched for Field Team assignment and survey collection.'
       );
       if (res?.success) {
         toast({
-          title: 'Dispatched to CAD',
-          description: 'Project moved to CAD Prototype stage successfully.',
+          title: 'Dispatched to Field',
+          description: 'Project moved to Field Team Assignment stage successfully.',
           variant: 'success'
         });
       } else {
@@ -893,13 +893,12 @@ export function OperationsFileUploadPanel({
               </button>
             ) : (
               <button
-                onClick={handleSendToCAD}
-                disabled={isPending || files.length === 0 || !hasCADMember}
-                title={!hasCADMember ? "Please assign a CAD Specialist before sending" : undefined}
+                onClick={handleSendToField}
+                disabled={isPending || files.length === 0}
                 className="w-full mt-4 flex items-center justify-center gap-2 px-5 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-sm disabled:opacity-50 transition-all shadow-sm"
               >
-                {isPending && loadingAction === 'send_to_cad' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                {hasCADMember ? 'Send to CAD' : 'Assign CAD Specialist First'}
+                {isPending && loadingAction === 'send_to_field' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                Proceed to Field Assignment
               </button>
             )
           )}

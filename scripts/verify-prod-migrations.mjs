@@ -21,7 +21,7 @@ const CRITICAL = [
   '20260731180000_public_invoice_receipt_rpcs.sql',
   '20260731190000_fix_public_and_finance_rpc_enums.sql',
   '20260731191000_public_share_tokens.sql',
-  '20260724000002_distributed_rate_limiting.sql',
+  '20260724000003_distributed_rate_limiting.sql',
 ];
 
 console.log('\n=== Production speed migrations (must apply on Supabase) ===\n');

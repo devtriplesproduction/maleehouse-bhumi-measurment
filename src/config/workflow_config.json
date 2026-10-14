@@ -13,7 +13,7 @@
       "display_name": "Data Collection (Field)",
       "allowed_roles": ["admin", "engineer", "field"],
       "allow_rollback": true,
-      "transitions_to": ["prototype"],
+      "transitions_to": ["field_work", "data_sync"],
       "task_generation": ["tsk_schedule_visit", "tsk_raw_gps", "tsk_field_photos"],
       "payment_gate": "milestone_1",
       "required_files": ["survey_data"]
@@ -40,7 +40,7 @@
       "display_name": "Review Submission & Validation",
       "allowed_roles": ["admin", "engineer"],
       "allow_rollback": true,
-      "transitions_to": ["review"],
+      "transitions_to": ["review", "completed"],
       "task_generation": ["tsk_compile_dossier", "tsk_pre_qc_check"],
       "payment_gate": null,
       "required_files": ["field_report"]
@@ -67,7 +67,7 @@
   "templates": {
     "topographic_survey": {
       "display_name": "Topographic Survey",
-      "pipeline": ["project_created", "data_collection", "prototype", "data_sync", "completed"],
+      "pipeline": ["project_created", "data_collection", "data_sync", "completed"],
       "billing_milestones": ["milestone_1", "milestone_final"]
     },
     "dgps_survey": {
@@ -77,17 +77,17 @@
     },
     "drone_mapping": {
       "display_name": "Drone Mapping",
-      "pipeline": ["project_created", "data_collection", "prototype", "review", "completed"],
+      "pipeline": ["project_created", "data_collection", "data_sync", "review", "completed"],
       "billing_milestones": ["milestone_1", "milestone_2"]
     },
     "boundary_survey": {
       "display_name": "Boundary Survey",
-      "pipeline": ["project_created", "data_collection", "prototype", "review", "completed"],
+      "pipeline": ["project_created", "data_collection", "data_sync", "review", "completed"],
       "billing_milestones": ["milestone_1", "milestone_final"]
     },
     "road_alignment_survey": {
       "display_name": "Road Alignment Survey",
-      "pipeline": ["project_created", "data_collection", "prototype", "field_work", "data_sync", "review", "completed"],
+      "pipeline": ["project_created", "data_collection", "field_work", "data_sync", "review", "completed"],
       "billing_milestones": ["milestone_1", "milestone_2", "milestone_final"]
     }
   }

@@ -48,37 +48,19 @@ const WORKFLOW_STAGES: StageConfig[] = [
     responsibleRole: 'engineer',
     responsibleLabel: 'Engineer',
     statusKey: 'data_collection',
-    nextStatusKey: 'prototype'
-  },
-  {
-    id: 3,
-    label: 'CAD Prototype',
-    description: 'Preparation of the preliminary draft and CAD blueprints layout.',
-    responsibleRole: 'cad',
-    responsibleLabel: 'CAD Specialist',
-    statusKey: 'prototype',
-    nextStatusKey: 'review'
-  },
-  {
-    id: 4,
-    label: 'CAD Review',
-    description: 'Engineering checks and v1 prototype clearance.',
-    responsibleRole: 'engineer',
-    responsibleLabel: 'Engineer',
-    statusKey: 'review',
     nextStatusKey: 'field_assigned'
   },
   {
-    id: 5,
+    id: 3,
     label: 'Field Team Assignment',
     description: 'Allocating field survey crew and scheduling GPS visits.',
     responsibleRole: 'engineer',
     responsibleLabel: 'Engineer',
     statusKey: 'field_assigned',
-    nextStatusKey: 'field_work' // keeps working or starts field collecting
+    nextStatusKey: 'field_work'
   },
   {
-    id: 6,
+    id: 4,
     label: 'Survey Collection',
     description: 'DGPS benchmark calculations and coordinate mappings on site.',
     responsibleRole: 'field',
@@ -87,25 +69,25 @@ const WORKFLOW_STAGES: StageConfig[] = [
     nextStatusKey: 'data_sync'
   },
   {
-    id: 7,
+    id: 5,
     label: 'Survey Validation',
-    description: 'Verification of survey raw files and comparison with draft CADs.',
-    responsibleRole: 'cad',
-    responsibleLabel: 'CAD Specialist',
+    description: 'Verification of survey raw files and site deliverables.',
+    responsibleRole: 'engineer',
+    responsibleLabel: 'Engineer',
     statusKey: 'data_sync',
-    nextStatusKey: 'completed'
+    nextStatusKey: 'final_review'
   },
   {
-    id: 8,
+    id: 6,
     label: 'Final Deliverable',
-    description: 'CAD Specialist uploads the final completed drawings for delivery.',
-    responsibleRole: 'cad',
-    responsibleLabel: 'CAD Specialist',
+    description: 'Engineer uploads final verified documents and deliverables for handover.',
+    responsibleRole: 'engineer',
+    responsibleLabel: 'Engineer',
     statusKey: 'final_review',
     nextStatusKey: 'completed'
   },
   {
-    id: 9,
+    id: 7,
     label: 'Delivered',
     description: 'Final files dispatched to clients. Project completed.',
     responsibleRole: 'admin',
@@ -132,7 +114,7 @@ export default function ProjectWorkflowTab({
     setLocalStatus(projectStatus);
   }, [projectStatus]);
 
-  // Map project status to current stage index (0 to 8)
+  // Map project status to current stage index
   const getStageIndex = (status: string): number => {
     switch (status) {
       case 'lead_created':
@@ -144,21 +126,17 @@ export default function ProjectWorkflowTab({
         return 0;
       case 'data_collection':
         return 1;
-      case 'prototype':
-        return 2;
-      case 'review':
-        return 3;
       case 'field_assigned':
-        return 4;
+        return 2;
       case 'field_work':
-        return 5;
+        return 3;
       case 'data_sync':
-        return 6;
+        return 4;
       case 'final_review':
-        return 7;
+        return 5;
       case 'completed':
       case 'archived':
-        return 8;
+        return 6;
       default:
         return 0;
     }
@@ -166,7 +144,7 @@ export default function ProjectWorkflowTab({
 
   const currentIndex = getStageIndex(localStatus);
   const currentStage = WORKFLOW_STAGES[currentIndex];
-  const nextStage = currentIndex < 7 ? WORKFLOW_STAGES[currentIndex + 1] : null;
+  const nextStage = currentIndex < WORKFLOW_STAGES.length - 1 ? WORKFLOW_STAGES[currentIndex + 1] : null;
 
   // Determine if the logged in user is responsible for the current stage
   const isResponsible = () => {
@@ -218,7 +196,7 @@ export default function ProjectWorkflowTab({
       <div className="glass-card border-slate-200 dark:border-white/10 bg-white dark:bg-[#09090b] rounded-3xl overflow-hidden shadow-sm">
         <div className="px-6 py-4 border-b border-slate-100 dark:border-white/5">
           <h3 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">Project Lifecycle Steps</h3>
-          <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-0.5">9-stage delivery pipeline tracked sequentially by department.</p>
+          <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-0.5">7-stage delivery pipeline tracked sequentially by department.</p>
         </div>
 
         <div className="overflow-x-auto">

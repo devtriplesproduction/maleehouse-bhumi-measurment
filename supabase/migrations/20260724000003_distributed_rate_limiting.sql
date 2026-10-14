@@ -1,5 +1,5 @@
 -- ============================================================
--- FILE: 20260724000002_distributed_rate_limiting.sql
+-- FILE: 20260724000003_distributed_rate_limiting.sql
 -- PURPOSE: Replace the in-memory (per-isolate) rate limiter in
 --          middleware.ts with a shared, DB-backed one so counts are
 --          consistent across serverless instances / cold starts.

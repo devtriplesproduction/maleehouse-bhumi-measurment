@@ -19,6 +19,13 @@ export interface SelectProps {
   id?: string;
 }
 
+export interface SelectItemProps {
+  value: string;
+  children: React.ReactNode;
+  className?: string;
+  label?: string;
+}
+
 const SelectContext = React.createContext<{
   value?: string;
   onValueChange: (value: string) => void;
@@ -31,6 +38,7 @@ export function Select({ value, onValueChange, placeholder, children, className,
   const [mounted, setMounted] = React.useState(false);
   const [coords, setCoords] = React.useState({ top: 0, left: 0, width: 0 });
   const containerRef = React.useRef<HTMLDivElement>(null);
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
     setMounted(true);
@@ -40,7 +48,7 @@ export function Select({ value, onValueChange, placeholder, children, className,
     if (containerRef.current) {
       const rect = containerRef.current.getBoundingClientRect();
       setCoords({
-        top: rect.bottom + window.scrollY + 8,
+        top: rect.bottom + window.scrollY + 6,
         left: rect.left + window.scrollX,
         width: rect.width,
       });
@@ -55,12 +63,11 @@ export function Select({ value, onValueChange, placeholder, children, className,
 
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        // Also check if clicked inside the portal
-        const portalEl = document.getElementById("select-portal-container");
-        if (portalEl && portalEl.contains(event.target as Node)) {
-          return;
-        }
+      const target = event.target as Node;
+      if (
+        containerRef.current && !containerRef.current.contains(target) &&
+        dropdownRef.current && !dropdownRef.current.contains(target)
+      ) {
         setOpen(false);
       }
     };
@@ -81,14 +88,33 @@ export function Select({ value, onValueChange, placeholder, children, className,
     };
   }, [open]);
 
-  const selectedChild = React.Children.toArray(children).find(
-    (child) => React.isValidElement(child) && child.props.value === value
-  ) as React.ReactElement;
+  // Recursively search children for matching SelectItem
+  const findSelectedChild = (childrenNodes: React.ReactNode): React.ReactElement | undefined => {
+    let result: React.ReactElement | undefined;
+    React.Children.forEach(childrenNodes, (child) => {
+      if (result) return;
+      if (React.isValidElement(child)) {
+        if (child.props?.value !== undefined && String(child.props.value) === String(value)) {
+          result = child;
+        } else if (child.props?.children) {
+          const found = findSelectedChild(child.props.children);
+          if (found) result = found;
+        }
+      }
+    });
+    return result;
+  };
+
+  const selectedChild = value !== undefined ? findSelectedChild(children) : undefined;
+  const displayLabel = selectedChild 
+    ? (selectedChild.props.label || selectedChild.props.children)
+    : placeholder;
 
   const dropdown = (
     <AnimatePresence>
       {open && (
         <motion.div 
+          ref={dropdownRef}
           key="select-dropdown"
           initial={{ opacity: 0, y: -8, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -101,7 +127,6 @@ export function Select({ value, onValueChange, placeholder, children, className,
             width: coords.width,
             zIndex: 99999
           }}
-          id="select-portal-container"
           className={cn(
             "z-[99999] rounded-xl overflow-hidden",
             "bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl",
@@ -141,8 +166,8 @@ export function Select({ value, onValueChange, placeholder, children, className,
             buttonClassName
           )}
         >
-          <span className={cn("truncate", !value && "text-slate-400 dark:text-slate-500 font-normal")}>
-            {selectedChild ? selectedChild.props.children : placeholder}
+          <span className={cn("truncate", !selectedChild && "text-slate-400 dark:text-slate-500 font-normal")}>
+            {displayLabel}
           </span>
           <ChevronDown className={cn("h-4 w-4 text-slate-400 dark:text-slate-500 transition-transform duration-300 flex-shrink-0 ml-2", open && "rotate-180 text-indigo-500")} />
         </button>
@@ -156,14 +181,11 @@ export function Select({ value, onValueChange, placeholder, children, className,
 export function SelectItem({ 
   value, 
   children, 
-  className 
-}: { 
-  value: string; 
-  children: React.ReactNode; 
-  className?: string 
-}) {
+  className,
+  label
+}: SelectItemProps) {
   const context = React.useContext(SelectContext);
-  const isSelected = context?.value === value;
+  const isSelected = context?.value !== undefined && String(context?.value) === String(value);
 
   return (
     <button
@@ -173,13 +195,13 @@ export function SelectItem({
         context?.setOpen(false);
       }}
       className={cn(
-        "relative flex w-full cursor-pointer select-none items-center rounded-lg py-2.5 pl-9 pr-4 text-sm font-medium outline-none transition-all duration-200",
+        "relative flex w-full cursor-pointer select-none items-center rounded-lg py-2.5 pl-9 pr-4 text-sm font-medium outline-none transition-all duration-200 text-left",
         "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white",
         isSelected && "text-indigo-600 dark:text-indigo-400 font-semibold bg-indigo-50/80 dark:bg-indigo-500/10",
         className
       )}
     >
-      <span className="absolute left-3 flex h-4 w-4 items-center justify-center">
+      <span className="absolute left-3 flex h-4 w-4 items-center justify-center pointer-events-none">
         {isSelected && (
           <motion.div
             initial={{ scale: 0 }}
@@ -190,7 +212,39 @@ export function SelectItem({
           </motion.div>
         )}
       </span>
-      <span className="truncate">{children}</span>
+      <div className="truncate w-full">{children}</div>
     </button>
   );
+}
+
+export function SelectGroup({ 
+  children, 
+  className 
+}: { 
+  children: React.ReactNode; 
+  className?: string 
+}) {
+  return (
+    <div role="group" className={cn("py-1", className)}>
+      {children}
+    </div>
+  );
+}
+
+export function SelectLabel({ 
+  children, 
+  className 
+}: { 
+  children: React.ReactNode; 
+  className?: string 
+}) {
+  return (
+    <div className={cn("px-3.5 py-1.5 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider select-none", className)}>
+      {children}
+    </div>
+  );
+}
+
+export function SelectSeparator({ className }: { className?: string }) {
+  return <div className={cn("-mx-1 my-1 h-px bg-slate-100 dark:bg-white/5", className)} />;
 }

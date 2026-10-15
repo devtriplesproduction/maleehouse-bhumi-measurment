@@ -68,6 +68,7 @@ interface ProjectDetailTabsProps {
   milestones: any[];
   allUsers: any[];
   fieldReports?: any[];
+  initialMaterials?: any[];
   theme: {
     primary: string;
     hover: string;
@@ -92,6 +93,7 @@ export function ProjectDetailTabs({
   milestones,
   allUsers,
   fieldReports,
+  initialMaterials = [],
   theme,
   serverRenderTime = 0
 }: ProjectDetailTabsProps) {
@@ -242,6 +244,7 @@ export function ProjectDetailTabs({
                   cadRevisions={cadRevisions}
                   activityLogs={activityLogs}
                   comments={comments}
+                  initialMaterials={initialMaterials}
                   onUpdateProject={(updatedProject: any) => setLocalProject({ ...localProject, ...updatedProject })}
                   onUpdateTeamMembers={(updatedTeam: any) => setLocalTeamMembers(updatedTeam)}
                   onUpdateFiles={(updatedFiles: any) => setLocalFiles(updatedFiles)}
@@ -279,6 +282,8 @@ export function ProjectDetailTabs({
                   comments={localComments}
                   userRole={userRole}
                   currentUserId={currentUserId}
+                  teamMembers={teamMembers}
+                  allUsers={allUsers}
                   onUpdateComments={(updatedComments: any) => setLocalComments(updatedComments)}
                 />
               </div>
@@ -307,6 +312,7 @@ export function ProjectDetailTabs({
                   activityLogs={activityLogs}
                   workflowHistory={history}
                   onUpdateFiles={(updatedFiles: any) => setLocalFiles(updatedFiles)}
+                  onUpdateProject={(updatedProject: any) => setLocalProject({ ...localProject, ...updatedProject })}
                 />
               </div>
             )}

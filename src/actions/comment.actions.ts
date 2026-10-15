@@ -96,10 +96,14 @@ export async function addProjectCommentAction(
           if (p.id === profile.id) continue
           const fullName = `${p.first_name || ''} ${p.last_name || ''}`.trim()
           const firstName = p.first_name?.trim()
+          const lastName = p.last_name?.trim()
           const email = p.email?.trim()
+          const emailUser = email ? email.split('@')[0] : ''
           if ((fullName && textLower.includes(`@${fullName.toLowerCase()}`)) ||
               (firstName && textLower.includes(`@${firstName.toLowerCase()}`)) ||
-              (email && textLower.includes(`@${email.toLowerCase()}`))) {
+              (lastName && textLower.includes(`@${lastName.toLowerCase()}`)) ||
+              (email && textLower.includes(`@${email.toLowerCase()}`)) ||
+              (emailUser && textLower.includes(`@${emailUser.toLowerCase()}`))) {
             mentionedUserIds.add(p.id)
           }
         }

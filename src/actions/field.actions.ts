@@ -359,23 +359,33 @@ export async function submitMaterialToCompanyAction(materialId: string, notes?: 
   if (!profile) return { success: false, error: "Unauthorized" };
 
   const supabase: any = await createClient();
-  const { data: material } = await supabase.from("material_requests").select("*").eq("id", materialId).single();
-  if (!material) return { success: false, error: "Material not found" };
+  const now = new Date().toISOString();
 
-  const updatedNotes = notes
-    ? (material.notes ? `${material.notes} | Returned: ${notes}` : `Returned: ${notes}`)
-    : material.notes;
+  let updatedNotes: string | undefined = undefined;
+  if (notes) {
+    const { data: current } = await supabase.from("material_requests").select("notes").eq("id", materialId).single();
+    updatedNotes = current?.notes ? `${current.notes} | Returned: ${notes}` : `Returned: ${notes}`;
+  }
 
-  const { error } = await supabase.from("material_requests").update({
+  const updatePayload: any = {
     status: "submitted",
-    submitted_at: new Date().toISOString(),
-    submitted_by: profile.id,
-    notes: updatedNotes
-  }).eq("id", materialId);
+    submitted_at: now,
+    submitted_by: profile.id
+  };
+  if (updatedNotes !== undefined) {
+    updatePayload.notes = updatedNotes;
+  }
 
-  if (error) {
+  const { data: material, error } = await supabase
+    .from("material_requests")
+    .update(updatePayload)
+    .eq("id", materialId)
+    .select("project_id, item_name, quantity")
+    .single();
+
+  if (error || !material) {
     console.error("Error submitting material to company:", error);
-    return { success: false, error: error.message };
+    return { success: false, error: error?.message || "Material not found" };
   }
 
   // Log activity
@@ -385,22 +395,114 @@ export async function submitMaterialToCompanyAction(materialId: string, notes?: 
     user_id: profile.id,
     action: "MATERIAL_SUBMITTED_TO_COMPANY",
     details: { item: material.item_name, quantity: material.quantity, material_id: materialId },
-    created_at: new Date().toISOString(),
+    created_at: now,
   });
 
   const { revalidatePath } = await import("next/cache");
   revalidatePath(`/projects/${material.project_id}`);
-  revalidatePath("/field");
-  revalidatePath("/operations");
-  revalidatePath("/engineer");
 
   return { success: true, message: `Material "${material.item_name}" submitted to company.` };
 }
 
 /**
- * Mark all assigned materials for a project as submitted back to the company.
+ * Mark an assigned material as lost / missing with responsible team member.
  */
-export async function submitAllProjectMaterialsAction(projectId: string) {
+export async function markMaterialLostAction(
+  materialId: string,
+  responsiblePersonId?: string,
+  responsiblePersonName?: string,
+  reason?: string,
+  shouldRevalidate: boolean = true
+) {
+  const profile = await getUserProfileAction();
+  if (!profile) return { success: false, error: "Unauthorized" };
+
+  if (!responsiblePersonName && !responsiblePersonId) {
+    return { success: false, error: "Please specify the responsible team member's name." };
+  }
+
+  const supabase: any = await createClient();
+  const { data: material } = await supabase.from("material_requests").select("*, projects(name)").eq("id", materialId).single();
+  if (!material) return { success: false, error: "Material not found" };
+
+  const now = new Date().toISOString();
+  const finalResponsibleName = responsiblePersonName?.trim() || "";
+
+  const { error } = await supabase.from("material_requests").update({
+    status: "lost",
+    responsible_person: responsiblePersonId || null,
+    responsible_person_name: finalResponsibleName,
+    lost_reason: reason?.trim() || null,
+    lost_reported_at: now,
+    lost_reported_by: profile.id,
+    resolution_status: "unresolved"
+  }).eq("id", materialId);
+
+  if (error) {
+    console.error("Error marking material as lost:", error);
+    return { success: false, error: error.message };
+  }
+
+  // Log activity and notify in parallel
+  const activityPromise = supabase.from('activity_logs').insert({
+    id: generateId("act"),
+    project_id: material.project_id,
+    user_id: profile.id,
+    action: "MATERIAL_REPORTED_LOST",
+    details: {
+      item: material.item_name,
+      quantity: material.quantity,
+      material_id: materialId,
+      responsible_person: finalResponsibleName,
+      responsible_person_id: responsiblePersonId,
+      reason
+    },
+    created_at: now,
+  });
+
+  const notifyPromise = (async () => {
+    const { data: admins } = await supabase.from('profiles').select('id').eq('role', 'admin');
+    if (admins && admins.length > 0) {
+      const projectName = material.projects?.name || material.project_id;
+      const { insertNotificationsBatch } = await import("./notification.actions");
+      await insertNotificationsBatch(
+        admins.map((admin: any) => ({
+          userId: admin.id,
+          title: "⚠️ Equipment Reported Lost/Missing",
+          message: `${material.quantity}x "${material.item_name}" for project "${projectName}" was reported lost. Responsible person: ${finalResponsibleName}.`,
+          type: "assignment" as const,
+          relatedProjectId: material.project_id
+        }))
+      );
+    }
+  })();
+
+  await Promise.all([activityPromise, notifyPromise]);
+
+  if (shouldRevalidate) {
+    const { revalidatePath } = await import("next/cache");
+    revalidatePath(`/projects/${material.project_id}`);
+    revalidatePath("/admin/lost-materials");
+  }
+
+  return { success: true, message: `Material "${material.item_name}" reported as lost. Responsible member noted.` };
+}
+
+export interface MissingMaterialInput {
+  materialId: string;
+  responsiblePersonId?: string;
+  responsiblePersonName?: string;
+  reason?: string;
+}
+
+/**
+ * Mark all assigned materials for a project as submitted back to the company,
+ * with optional missing items and responsible members.
+ */
+export async function submitAllProjectMaterialsAction(
+  projectId: string,
+  missingItems: MissingMaterialInput[] = []
+) {
   const profile = await getUserProfileAction();
   if (!profile) return { success: false, error: "Unauthorized" };
   if (!["admin", "engineer"].includes(profile.role)) {
@@ -410,7 +512,24 @@ export async function submitAllProjectMaterialsAction(projectId: string) {
   const supabase: any = await createClient();
   const now = new Date().toISOString();
 
-  const { error } = await supabase
+  // 1. Process missing items in parallel without per-item revalidation
+  const missingIdSet = new Set(missingItems.map(m => m.materialId));
+  if (missingItems.length > 0) {
+    await Promise.all(
+      missingItems.map(item =>
+        markMaterialLostAction(
+          item.materialId,
+          item.responsiblePersonId,
+          item.responsiblePersonName,
+          item.reason,
+          false
+        )
+      )
+    );
+  }
+
+  // 2. Mark remaining assigned/requested materials as submitted
+  let updateQuery = supabase
     .from("material_requests")
     .update({
       status: "submitted",
@@ -419,6 +538,12 @@ export async function submitAllProjectMaterialsAction(projectId: string) {
     })
     .eq("project_id", projectId)
     .in("status", ["assigned", "requested"]);
+
+  if (missingIdSet.size > 0) {
+    updateQuery = updateQuery.not("id", "in", `(${Array.from(missingIdSet).join(',')})`);
+  }
+
+  const { error } = await updateQuery;
 
   if (error) {
     console.error("Error submitting all materials:", error);
@@ -431,21 +556,29 @@ export async function submitAllProjectMaterialsAction(projectId: string) {
     project_id: projectId,
     user_id: profile.id,
     action: "ALL_MATERIALS_SUBMITTED_TO_COMPANY",
-    details: { project_id: projectId },
+    details: {
+      project_id: projectId,
+      missing_count: missingItems.length
+    },
     created_at: now,
   });
 
   const { revalidatePath } = await import("next/cache");
   revalidatePath(`/projects/${projectId}`);
-  revalidatePath("/field");
-  revalidatePath("/operations");
-  revalidatePath("/engineer");
+  if (missingItems.length > 0) {
+    revalidatePath("/admin/lost-materials");
+  }
 
-  return { success: true, message: "All materials marked as submitted to company." };
+  return {
+    success: true,
+    message: missingItems.length > 0
+      ? `Materials submitted. ${missingItems.length} item(s) logged as lost with responsible members.`
+      : "All materials marked as submitted to company."
+  };
 }
 
 /**
- * Fetch all materials assigned to a given project.
+ * Fetch all materials assigned to a given project including lost details.
  */
 export async function getProjectMaterialsAction(projectId: string) {
   const profile = await getUserProfileAction();
@@ -464,9 +597,15 @@ export async function getProjectMaterialsAction(projectId: string) {
       assigned_by,
       submitted_at,
       submitted_by,
+      responsible_person,
+      responsible_person_name,
+      lost_reason,
+      lost_reported_at,
+      resolution_status,
       created_at,
       profiles:assigned_to ( first_name, last_name, role ),
-      assigner:assigned_by ( first_name, last_name )
+      assigner:assigned_by ( first_name, last_name ),
+      responsible:responsible_person ( first_name, last_name, role )
     `)
     .eq("project_id", projectId)
     .order("created_at", { ascending: false });
@@ -486,10 +625,121 @@ export async function getProjectMaterialsAction(projectId: string) {
     assigned_to_name: m.profiles ? `${m.profiles.first_name || ''} ${m.profiles.last_name || ''}`.trim() : null,
     assigned_by_name: m.assigner ? `${m.assigner.first_name || ''} ${m.assigner.last_name || ''}`.trim() : null,
     submitted_at: m.submitted_at,
+    responsible_person_id: m.responsible_person,
+    responsible_person_name: m.responsible_person_name || (m.responsible ? `${m.responsible.first_name || ''} ${m.responsible.last_name || ''}`.trim() : null),
+    lost_reason: m.lost_reason,
+    lost_reported_at: m.lost_reported_at,
+    resolution_status: m.resolution_status || "unresolved",
     created_at: m.created_at
   }));
 
   return { success: true, data: normalizeData(formatted) };
+}
+
+/**
+ * Fetch all lost/missing materials across all projects (Admin dashboard).
+ */
+export async function getLostMaterialsAction() {
+  const profile = await getUserProfileAction();
+  if (!profile || profile.role !== "admin") {
+    return { success: false, error: "Unauthorized. Admin only." };
+  }
+
+  const supabase: any = await createClient();
+  const { data, error } = await supabase
+    .from("material_requests")
+    .select(`
+      id,
+      project_id,
+      item_name,
+      quantity,
+      status,
+      notes,
+      lost_reason,
+      lost_reported_at,
+      lost_reported_by,
+      responsible_person,
+      responsible_person_name,
+      resolution_status,
+      resolution_notes,
+      created_at,
+      projects ( id, name, client_name, status ),
+      responsible:responsible_person ( id, first_name, last_name, role, email, phone_number ),
+      reporter:lost_reported_by ( id, first_name, last_name, role )
+    `)
+    .in("status", ["lost", "missing"])
+    .order("lost_reported_at", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching lost materials:", error);
+    return { success: false, error: error.message, data: [] };
+  }
+
+  const formatted = (data || []).map((m: any) => ({
+    id: m.id,
+    project_id: m.project_id,
+    project_name: m.projects?.name || "Unknown Project",
+    client_name: m.projects?.client_name || "N/A",
+    project_status: m.projects?.status,
+    item_name: m.item_name,
+    quantity: m.quantity,
+    status: m.status,
+    notes: m.notes,
+    lost_reason: m.lost_reason,
+    lost_reported_at: m.lost_reported_at || m.created_at,
+    responsible_person_id: m.responsible_person,
+    responsible_person_name: m.responsible_person_name || (m.responsible ? `${m.responsible.first_name || ''} ${m.responsible.last_name || ''}`.trim() : "Unknown"),
+    responsible_role: m.responsible?.role || "Staff",
+    responsible_email: m.responsible?.email,
+    responsible_phone: m.responsible?.phone_number,
+    reporter_name: m.reporter ? `${m.reporter.first_name || ''} ${m.reporter.last_name || ''}`.trim() : "Engineer",
+    resolution_status: m.resolution_status || "unresolved",
+    resolution_notes: m.resolution_notes,
+    created_at: m.created_at
+  }));
+
+  return { success: true, data: normalizeData(formatted) };
+}
+
+/**
+ * Update resolution of a lost material (e.g. recovered, deducted from salary, written off).
+ */
+export async function updateLostMaterialResolutionAction(
+  materialId: string,
+  resolutionStatus: 'unresolved' | 'recovered' | 'deducted_from_pay' | 'written_off',
+  resolutionNotes?: string
+) {
+  const profile = await getUserProfileAction();
+  if (!profile || profile.role !== "admin") {
+    return { success: false, error: "Unauthorized. Admin only." };
+  }
+
+  const supabase: any = await createClient();
+  const updatePayload: any = {
+    resolution_status: resolutionStatus,
+    resolution_notes: resolutionNotes?.trim() || null
+  };
+
+  if (resolutionStatus === 'recovered') {
+    updatePayload.status = 'submitted';
+    updatePayload.submitted_at = new Date().toISOString();
+    updatePayload.submitted_by = profile.id;
+  }
+
+  const { error } = await supabase
+    .from("material_requests")
+    .update(updatePayload)
+    .eq("id", materialId);
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  const { revalidatePath } = await import("next/cache");
+  revalidatePath("/admin/lost-materials");
+  revalidatePath("/engineer");
+
+  return { success: true, message: `Material resolution updated to ${resolutionStatus.replace(/_/g, ' ')}.` };
 }
 
 /**

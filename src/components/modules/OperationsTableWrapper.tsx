@@ -9,7 +9,14 @@ export async function OperationsTableWrapper() {
   const { data: projects, error } = await supabase
     .from('projects')
     .select(`
-      *,
+      id,
+      name,
+      client_name,
+      status,
+      target_completion_date,
+      created_at,
+      updated_at,
+      is_frozen,
       project_assignments (
         id,
         user_id,
@@ -23,13 +30,14 @@ export async function OperationsTableWrapper() {
       files (
         id,
         category,
-        uploaded_at,
-        file_name
+        file_name,
+        uploaded_at
       )
     `)
     .neq('status', 'archived')
     .is('deleted_at', null)
-    .order('updated_at', { ascending: false });
+    .order('updated_at', { ascending: false })
+    .limit(100);
 
   if (error) {
     console.error('Error fetching operations data:', error);

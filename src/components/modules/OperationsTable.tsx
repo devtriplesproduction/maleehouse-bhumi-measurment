@@ -33,7 +33,8 @@ const stageConfig: Record<string, { label: string; icon: any; color: string }> =
   field_work: { label: 'Field Ops', icon: MapPin, color: 'text-teal-500 bg-teal-500/10' },
   data_sync: { label: 'Syncing', icon: Activity, color: 'text-cyan-500 bg-cyan-500/10' },
   final_review: { label: 'Final QC', icon: ClipboardCheck, color: 'text-rose-500 bg-rose-500/10' },
-  completed: { label: 'Completed', icon: CheckCircle2, color: 'text-emerald-500 bg-emerald-500/10' },
+  completed: { label: 'Delivered', icon: CheckCircle2, color: 'text-emerald-500 bg-emerald-500/10' },
+  delivered: { label: 'Delivered', icon: CheckCircle2, color: 'text-emerald-500 bg-emerald-500/10' },
   payment_done: { label: 'Ready', icon: Clock, color: 'text-slate-500 bg-slate-500/10' },
 };
 

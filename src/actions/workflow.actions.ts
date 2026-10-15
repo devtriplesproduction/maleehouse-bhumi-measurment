@@ -405,7 +405,7 @@ async function validateStageTransition(
           const names = pendingMaterials.map((m: any) => `${m.quantity}x ${m.item_name}`).join(", ");
           return {
             success: false,
-            error: `Cannot complete project: All assigned materials must be submitted to the company first (${names}).`
+            error: `Cannot complete project: All assigned materials must be submitted to the company or reported missing/lost with responsible member (${names}).`
           };
         }
         break;
@@ -432,6 +432,7 @@ export async function transitionWorkflowAction(
     const auth = await requireProjectAccess(projectId, { requireUnlocked: false });
     if (!auth.authorized) return { success: false, error: auth.error || "Access denied." };
 
+    newStage = (newStage === 'delivered' || newStage === 'deliver') ? 'completed' : newStage;
     const role = auth.role as Role;
     const supabase: any = await createClient();
 
@@ -444,7 +445,7 @@ export async function transitionWorkflowAction(
     const { data: project } = await supabase.from("projects").select("status, is_frozen, dispatch_override_approved").eq("id", projectId).single();
     const fromStage = project?.status || null;
 
-    if (fromStage === "completed" || fromStage === "archived") {
+    if (fromStage === "completed" || fromStage === "delivered" || fromStage === "archived") {
       return { success: false, error: "Project is locked (completed/archived) and cannot be modified." };
     }
 

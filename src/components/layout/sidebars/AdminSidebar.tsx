@@ -19,6 +19,7 @@ import {
   AlertCircle,
   Scale,
   Coins,
+  PackageX,
 } from "lucide-react";
 import { BaseSidebar } from "./BaseSidebar";
 
@@ -38,6 +39,7 @@ const adminLinks = [
     icon: FolderKanban,
     subLinks: [
       { title: "All Projects", href: "/projects", icon: FileText },
+      { title: "Lost Equipment", href: "/admin/lost-materials", icon: PackageX },
       { title: "Milestones", href: "/admin/milestones", icon: ScrollText },
       { title: "Clients", href: "/clients", icon: Briefcase },
     ],

@@ -19,6 +19,7 @@ import { maskEmail, maskPhone } from '@/lib/utils';
 import { OperationsFileUploadPanel } from './OperationsFileUploadPanel';
 import { CADRevisionPanel } from './CADRevisionPanel';
 import { ProjectTeamSection } from './ProjectTeamSection';
+import { ProjectMaterialsSection } from './ProjectMaterialsSection';
 import { OperationsControlCenter } from './OperationsControlCenter';
 
 
@@ -32,6 +33,7 @@ interface ProjectOverviewTabProps {
   cadRevisions?: any[];
   activityLogs?: any[];
   comments?: any[];
+  initialMaterials?: any[];
   onUpdateProject?: (updatedProject: any) => void;
   onUpdateTeamMembers?: (updatedTeamMembers: any[]) => void;
   onUpdateFiles?: (files: any[]) => void;
@@ -47,6 +49,7 @@ export default function ProjectOverviewTab({
   cadRevisions = [],
   activityLogs = [],
   comments = [],
+  initialMaterials = [],
   onUpdateProject,
   onUpdateTeamMembers,
   onUpdateFiles
@@ -329,6 +332,15 @@ export default function ProjectOverviewTab({
           canAssign={(isAdmin || isEngineer) && !isProjectClosed}
         />
 
+        {/* Material Assignment */}
+        <ProjectMaterialsSection 
+          projectId={project.id}
+          assignments={teamMembers || []}
+          staff={allUsers || []}
+          canAssign={(isAdmin || isEngineer) && !isProjectClosed}
+          initialMaterials={initialMaterials}
+        />
+
       </div>
 
       {/* RIGHT COLUMN: Operations (60%) */}
@@ -361,6 +373,7 @@ export default function ProjectOverviewTab({
                   activityLogs={activityLogs}
                   comments={comments}
                   onUpdateFiles={onUpdateFiles}
+                  onUpdateProject={onUpdateProject}
                 />
 
                 {(isAdmin || isEngineer || isClaimedByMe) && (

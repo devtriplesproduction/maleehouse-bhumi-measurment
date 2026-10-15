@@ -33,15 +33,15 @@ export function AuthIllustration() {
     >
       {/* Header Info */}
       <div className="relative z-20 mb-6">
-        <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-indigo-50 border border-indigo-100/50 mb-3">
-          <Activity className="h-3 w-3 text-indigo-600 animate-pulse" />
-          <span className="text-[9px] font-bold uppercase tracking-[0.15em] text-indigo-700">
+        <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-purple-50 border border-purple-100/50 mb-3">
+          <Activity className="h-3 w-3 text-purple-600 animate-pulse" />
+          <span className="text-[9px] font-bold uppercase tracking-[0.15em] text-purple-700">
             System Orchestration
           </span>
         </div>
         <h2 className="text-[28px] font-bold leading-[1.1] tracking-tight text-slate-900 mb-2">
           Coordinate your entire <br/>
-          <span className="text-indigo-600">Malee House lifecycle.</span>
+          <span className="text-purple-600">Malee House lifecycle.</span>
         </h2>
         <p className="text-slate-500 text-[13px] font-medium max-w-[340px]">
           A unified workspace for leads, engineering, deliverables, and field operations.
@@ -53,7 +53,7 @@ export function AuthIllustration() {
         
         {/* Precise Technical Grid */}
         <div className="absolute inset-0 opacity-[0.03] pointer-events-none" 
-          style={{ backgroundImage: 'radial-gradient(#4f46e5 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
+          style={{ backgroundImage: 'radial-gradient(#a855f7 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] bg-[size:40px_40px] opacity-20" />
 
         {/* Dynamic Connection SVG */}

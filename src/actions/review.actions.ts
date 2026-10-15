@@ -159,12 +159,12 @@ export async function engineerReviewFinalDeliverableAction(
         const itemNames = unsubmittedMaterials.map((m: any) => `${m.quantity}x ${m.item_name}`).join(', ');
         return {
           success: false,
-          error: `Cannot approve final deliverable: All assigned project materials must be submitted to the company first. Pending return: [${itemNames}].`
+          error: `Cannot approve final deliverable: All assigned project materials must be submitted to the company or reported missing/lost with responsible members. Pending items: [${itemNames}].`
         };
       }
 
       // Approve Flow
-      const stageResponse = await updateProjectStageAction(projectId, 'completed', "Final Deliverable Approved by Engineer. Project Completed.");
+      const stageResponse = await updateProjectStageAction(projectId, 'completed', "Final Deliverable Approved by Engineer. Project Delivered.");
       if (!stageResponse.success) {
         return { success: false, error: stageResponse.error || "Failed to complete project." };
       }
@@ -207,8 +207,8 @@ export async function engineerReviewFinalDeliverableAction(
       await insertNotificationsBatch(
         Array.from(recipientIds).map((userId: any) => ({
           userId,
-          title: 'Project Completed 🎉',
-          message: `Project "${projectName}" has been successfully completed and approved by the Lead Engineer.`,
+          title: 'Project Delivered 🎉',
+          message: `Project "${projectName}" has been approved and marked as Delivered.`,
           type: 'approval',
           relatedProjectId: projectId,
         }))

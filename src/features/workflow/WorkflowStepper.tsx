@@ -40,7 +40,7 @@ export const STAGE_LABELS: Record<ProjectStage, string> = {
   field_work: "Field Work",
   data_sync: "Data Sync",
   final_review: "Final Review",
-  completed: "Completed",
+  completed: "Delivered",
 };
 
 interface WorkflowStepperProps {

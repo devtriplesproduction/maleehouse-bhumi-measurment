@@ -26,12 +26,12 @@ const STAGES = [
   { id: 'data_collection', label: 'Field' },
   { id: 'data_sync', label: 'Survey' },
   { id: 'final_review', label: 'Draft' },
-  { id: 'completed', label: 'Done' },
+  { id: 'completed', label: 'Delivered' },
 ];
 
 export function WorkflowStepper({ projectId, currentStatus, userRole }: WorkflowStepperProps) {
   const [isPending, startTransition] = useTransition();
-  const effectiveStatus = currentStatus;
+  const effectiveStatus = currentStatus === 'delivered' ? 'completed' : currentStatus;
   const currentIndex = STAGES.findIndex(s => s.id === effectiveStatus);
   const nextStage = STAGES[currentIndex + 1];
 

@@ -46,8 +46,8 @@ const statusConfig: Record<string, { label: string; dotColor: string; badgeClass
   review:           { label: 'Under Review',     dotColor: 'bg-yellow-500',  badgeClass: 'bg-yellow-500/10 text-yellow-700 dark:text-yellow-300 border-yellow-500/20' },
   field_work:       { label: 'Field Work',       dotColor: 'bg-teal-500',    badgeClass: 'bg-teal-500/10 text-teal-700 dark:text-teal-300 border-teal-500/20' },
   data_sync:        { label: 'Data Sync',        dotColor: 'bg-cyan-500',    badgeClass: 'bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border-cyan-500/20' },
-  final_review:     { label: 'Final Review',     dotColor: 'bg-rose-500',    badgeClass: 'bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/20' },
-  completed:        { label: 'Completed',        dotColor: 'bg-green-500',   badgeClass: 'bg-green-500/10 text-green-700 dark:text-green-300 border-green-500/20' },
+  completed:        { label: 'Delivered',        dotColor: 'bg-green-500',   badgeClass: 'bg-green-500/10 text-green-700 dark:text-green-300 border-green-500/20' },
+  delivered:        { label: 'Delivered',        dotColor: 'bg-green-500',   badgeClass: 'bg-green-500/10 text-green-700 dark:text-green-300 border-green-500/20' },
   archived:         { label: 'Archived',         dotColor: 'bg-slate-400',   badgeClass: 'bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20' },
 };
 
@@ -84,14 +84,16 @@ export function ProjectsTable({ initialPage, userRole = 'admin' }: ProjectsTable
     setPageData(initialPage);
   }, [initialPage]);
 
-  // Debounce search so we don't hit the server on every keystroke; reset page on change
+  // Debounce search so we don't hit the server on every keystroke; skip if unchanged
   useEffect(() => {
+    const trimmed = searchTerm.trim();
+    if (trimmed === debouncedSearch) return;
     const t = setTimeout(() => {
-      setDebouncedSearch(searchTerm.trim());
+      setDebouncedSearch(trimmed);
       setCurrentPage(1);
     }, 300);
     return () => clearTimeout(t);
-  }, [searchTerm]);
+  }, [searchTerm, debouncedSearch]);
 
   const fetchPage = useCallback(
     (page: number) => {
@@ -111,14 +113,25 @@ export function ProjectsTable({ initialPage, userRole = 'admin' }: ProjectsTable
     [pageSize, debouncedSearch, statusFilter, clientFilter]
   );
 
-  // Server pagination: fetch when page/filters change; skip first mount (SSR data)
+  // Server pagination: only fetch when page/filters actually change from initial state
+  const isInitialMount = React.useRef(true);
   useEffect(() => {
-    if (skipNextFetch.current) {
-      skipNextFetch.current = false;
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
+    // Avoid re-fetching initial page when no filters are applied
+    if (
+      currentPage === 1 &&
+      debouncedSearch === '' &&
+      statusFilter === 'all' &&
+      clientFilter === 'all' &&
+      pageData === initialPage
+    ) {
       return;
     }
     fetchPage(currentPage);
-  }, [currentPage, debouncedSearch, statusFilter, clientFilter, fetchPage]);
+  }, [currentPage, debouncedSearch, statusFilter, clientFilter, fetchPage, initialPage, pageData]);
 
   const projects = pageData.items || [];
   const total = pageData.total || 0;

@@ -20,11 +20,13 @@ import {
   ChevronUp,
   ChevronDown,
   Package,
-  AlertTriangle
+  AlertTriangle,
+  PackageX
 } from 'lucide-react';
 import { downloadFile } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { getProjectMaterialsAction, submitAllProjectMaterialsAction } from '@/actions/field.actions';
+import { SubmitMaterialsModal } from '@/components/modules/SubmitMaterialsModal';
 import { uploadProjectFile } from '@/lib/supabase/storage';
 import { updateProjectStageAction } from '@/actions/workflow.actions';
 import { reviewFieldSurveyAction } from '@/actions/operations.actions';
@@ -86,6 +88,7 @@ interface OperationsFileUploadPanelProps {
   activityLogs?: any[];
   comments?: any[];
   onUpdateFiles?: (files: any[]) => void;
+  onUpdateProject?: (updatedProject: any) => void;
 }
 
 export function OperationsFileUploadPanel({
@@ -97,7 +100,8 @@ export function OperationsFileUploadPanel({
   cadRevisions = [],
   activityLogs = [],
   comments = [],
-  onUpdateFiles
+  onUpdateFiles,
+  onUpdateProject
 }: OperationsFileUploadPanelProps) {
   const router = useRouter();
   const { toast } = useToast();
@@ -144,6 +148,8 @@ export function OperationsFileUploadPanel({
 
   // Materials & Equipment tracking for final deliverable
   const [projectMaterials, setProjectMaterials] = useState<any[]>([]);
+  const [isSubmitMaterialsModalOpen, setIsSubmitMaterialsModalOpen] = useState(false);
+
   const fetchMaterials = React.useCallback(async () => {
     try {
       const res = await getProjectMaterialsAction(projectId);
@@ -161,6 +167,12 @@ export function OperationsFileUploadPanel({
 
   const pendingProjectMaterials = projectMaterials.filter(
     (m: any) => m.status === 'assigned' || m.status === 'requested'
+  );
+  const lostProjectMaterials = projectMaterials.filter(
+    (m: any) => m.status === 'lost' || m.status === 'missing'
+  );
+  const submittedProjectMaterials = projectMaterials.filter(
+    (m: any) => m.status === 'submitted' || m.status === 'returned'
   );
 
   const hasNewFinalUpload = (() => {
@@ -420,6 +432,26 @@ export function OperationsFileUploadPanel({
       setUploadProgress(0);
       onUpdateFiles?.([registerResult.data, ...files]);
 
+      // Auto-register final deliverable CAD revision
+      try {
+        const { submitCADRevisionAction } = await import("@/actions/operations.actions");
+        await submitCADRevisionAction(
+          projectId,
+          uploadResult.fileName,
+          uploadResult.publicUrl,
+          'Final Deliverable submission',
+          'final'
+        );
+      } catch (err) {
+        console.error("CAD revision auto-registration failed:", err);
+      }
+
+      if (projectStatus !== 'final_review' && !isProjectClosed) {
+        await updateProjectStageAction(projectId, 'final_review', 'Final Deliverable uploaded. Ready for validation.').catch(console.error);
+        onUpdateProject?.({ status: 'final_review' });
+      }
+
+      router.refresh();
     } catch (err: any) {
       console.error(err);
       setIsUploading(false);
@@ -462,13 +494,13 @@ export function OperationsFileUploadPanel({
     if (isApproved) {
       if (pendingProjectMaterials.length > 0) {
         toast({
-          title: "Materials Return Required",
-          description: `All assigned materials (${pendingProjectMaterials.length} pending) must be submitted to the company before approving the final deliverable.`,
+          title: "Materials Return / Accounting Required",
+          description: `All assigned materials (${pendingProjectMaterials.length} pending) must be submitted to the company or reported missing with responsible members before approving the final deliverable.`,
           variant: "error"
         });
         return;
       }
-      if (!confirm("Are you sure you want to approve this final deliverable and complete the project?")) return;
+      if (!confirm("Are you sure you want to approve this final deliverable and mark the project as delivered?")) return;
       setLoadingAction('approve_final');
       startTransition(async () => {
         const { engineerReviewFinalDeliverableAction } = await import("@/actions/review.actions");
@@ -476,9 +508,11 @@ export function OperationsFileUploadPanel({
         if (res.success) {
           toast({
             title: 'Final Deliverable Approved',
-            description: 'Project marked as Completed.',
+            description: 'Project marked as Delivered.',
             variant: 'success'
           });
+          onUpdateProject?.({ status: 'completed' });
+          router.refresh();
         } else {
           toast({
             title: 'Approval Failed',
@@ -508,6 +542,7 @@ export function OperationsFileUploadPanel({
         const res = await reviewFieldSurveyAction(projectId, false, rejectionReason);
         if (res.success) {
           toast({ title: 'Survey Sent for Rework', description: 'Sent back to field team.', variant: 'success' });
+          router.refresh();
         } else {
           toast({ title: 'Action Failed', description: res.error || 'Failed to review survey.', variant: 'error' });
         }
@@ -516,6 +551,7 @@ export function OperationsFileUploadPanel({
         const res = await engineerReviewFinalDeliverableAction(projectId, false, rejectionReason, rejectionComments, rejectionInstructions);
         if (res.success) {
           toast({ title: 'Final Deliverable Rejected', description: 'Project returned to Deliverable Finalization stage.', variant: 'success' });
+          router.refresh();
         } else {
           toast({ title: 'Rejection Failed', description: res.error || 'An error occurred.', variant: 'error' });
         }
@@ -560,59 +596,6 @@ export function OperationsFileUploadPanel({
     });
   };
 
-  const handleSubmitFinalReport = () => {
-    setLoadingAction('submit_final_report');
-    startTransition(async () => {
-      if (finalDocs.length === 0) {
-        toast({
-          title: 'Submission Failed',
-          description: 'Please upload a final deliverable first.',
-          variant: 'error'
-        });
-        return;
-      }
-
-      const targetFinal = latestFinal || finalDocs[0];
-      const { submitCADRevisionAction } = await import("@/actions/operations.actions");
-      const revRes = await submitCADRevisionAction(
-        projectId,
-        targetFinal.file_name,
-        targetFinal.file_url,
-        'Final Deliverable submission',
-        'final'
-      );
-
-      if (!revRes.success) {
-        toast({
-          title: 'Submission Failed',
-          description: revRes.error || 'Failed to submit final deliverable revision.',
-          variant: 'error'
-        });
-        return;
-      }
-
-      const stageRes = await updateProjectStageAction(
-        projectId,
-        'final_review',
-        'Final Deliverable submitted for engineering validation.'
-      );
-
-      if (stageRes?.success) {
-        toast({
-          title: 'Submitted Final Deliverable',
-          description: 'Deliverable submitted for engineering review.',
-          variant: 'success'
-        });
-      } else {
-        toast({
-          title: 'Submission Warning',
-          description: stageRes?.error || 'Revision registered.',
-          variant: 'error'
-        });
-      }
-      setLoadingAction(null);
-    });
-  };
 
   const handleDeleteFile = (fileId: string, fileName: string) => {
     if (!confirm(`Are you sure you want to delete ${fileName}?`)) return;
@@ -1037,32 +1020,21 @@ export function OperationsFileUploadPanel({
                       <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
                       <div>
                         <p className="font-bold text-amber-900 dark:text-amber-200">
-                          Materials Submission Required
+                          Materials Submission / Accounting Required
                         </p>
                         <p className="text-[11px] text-amber-700 dark:text-amber-300">
-                          {pendingProjectMaterials.length} material(s) assigned to this project must be returned/submitted to the company before approval.
+                          {pendingProjectMaterials.length} material(s) assigned to this project must be returned or accounted for (reported missing with a responsible member) before deliverable approval.
                         </p>
                       </div>
                     </div>
                     <button
                       type="button"
                       disabled={isPending}
-                      onClick={async () => {
-                        setLoadingAction('submit_all_materials');
-                        startTransition(async () => {
-                          const res = await submitAllProjectMaterialsAction(projectId);
-                          if (res.success) {
-                            toast({ title: 'Materials Submitted', description: 'All materials marked submitted in company.', variant: 'success' });
-                            fetchMaterials();
-                          } else {
-                            toast({ title: 'Submission Failed', description: res.error, variant: 'error' });
-                          }
-                          setLoadingAction(null);
-                        });
-                      }}
-                      className="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shrink-0 transition shadow-sm disabled:opacity-50"
+                      onClick={() => setIsSubmitMaterialsModalOpen(true)}
+                      className="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shrink-0 transition shadow-sm disabled:opacity-50 flex items-center gap-1.5"
                     >
-                      {isPending && loadingAction === 'submit_all_materials' ? 'Submitting…' : 'Submit All to Company'}
+                      <Package className="w-3.5 h-3.5" />
+                      <span>Submit / Report Missing</span>
                     </button>
                   </div>
                   <div className="flex flex-wrap gap-1.5 pt-0.5">
@@ -1074,23 +1046,36 @@ export function OperationsFileUploadPanel({
                   </div>
                 </div>
               ) : (
-                <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-xs flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                    <span className="font-bold text-emerald-900 dark:text-emerald-200">
-                      All {projectMaterials.length} Assigned Material(s) Submitted in Company
+                <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-xs space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      <span className="font-bold text-emerald-900 dark:text-emerald-200">
+                        All {projectMaterials.length} Assigned Material(s) Accounted For ({submittedProjectMaterials.length} Submitted{lostProjectMaterials.length > 0 ? `, ${lostProjectMaterials.length} Reported Lost` : ''})
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 shrink-0">
+                      Verified for Delivery
                     </span>
                   </div>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-300">
-                    Verified
-                  </span>
+                  {lostProjectMaterials.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pt-1 border-t border-emerald-500/15">
+                      {lostProjectMaterials.map((m: any) => (
+                        <span key={m.id} className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-rose-500/15 text-rose-700 dark:text-rose-300 border border-rose-500/20 flex items-center gap-1">
+                          <PackageX className="w-3 h-3 text-rose-500" />
+                          <span>{m.quantity}x {m.item}</span>
+                          <span className="opacity-80">&bull; Resp: {m.responsible_person_name || 'Staff'}</span>
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
           )}
 
           {/* Engineer Final Deliverable Validation Buttons */}
-          {(isEngineer || isAdmin) && projectStatus === "final_review" && finalDocs.length > 0 && (
+          {(isEngineer || isAdmin) && (projectStatus === "final_review" || projectStatus === "data_sync") && finalDocs.length > 0 && !isProjectClosed && (
             <div className="flex gap-3 mt-4">
               <button
                 onClick={() => handleReviewFinalDeliverableInline(true)}
@@ -1110,21 +1095,20 @@ export function OperationsFileUploadPanel({
               </button>
             </div>
           )}
-
-          {/* Submit Final Report Button */}
-          {(isEngineer || isAdmin) && (
-            <button
-              onClick={handleSubmitFinalReport}
-              disabled={isPending || finalDocs.length === 0 || (latestCADRevision?.status === 'pending_review' && latestCADRevision?.revision_type === 'final') || (!!latestFinalRevision && !hasNewFinalUpload)}
-              className="w-full mt-4 flex items-center justify-center gap-2 px-5 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-sm disabled:opacity-50 transition-all shadow-sm"
-            >
-              {isPending && loadingAction === 'submit_final_report' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-              {latestCADRevision?.status === 'pending_review' && latestCADRevision?.revision_type === 'final' ? 'Validation Pending' : (latestFinalRevision && !hasNewFinalUpload ? 'No New Deliverable Uploaded' : (isProjectClosed ? 'Resubmit Final Deliverable (Reopen Project)' : 'Submit Final Report & Send for Validation'))}
-            </button>
-          )}
         </div>
       </CollapsibleWidget>
 
+      {/* Submit / Lost Materials Modal */}
+      <SubmitMaterialsModal
+        open={isSubmitMaterialsModalOpen}
+        onOpenChange={setIsSubmitMaterialsModalOpen}
+        projectId={projectId}
+        pendingMaterials={pendingProjectMaterials}
+        teamMembers={teamMembers}
+        onSuccess={() => {
+          fetchMaterials();
+        }}
+      />
     </div>
   );
 }

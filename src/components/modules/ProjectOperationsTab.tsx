@@ -17,6 +17,7 @@ interface ProjectOperationsTabProps {
   activityLogs: any[];
   workflowHistory: any[];
   onUpdateFiles?: (files: any[]) => void;
+  onUpdateProject?: (updatedProject: any) => void;
 }
 
 export default function ProjectOperationsTab({
@@ -32,6 +33,7 @@ export default function ProjectOperationsTab({
   activityLogs,
   workflowHistory,
   onUpdateFiles,
+  onUpdateProject,
 }: ProjectOperationsTabProps) {
   // Determine if user is operational role
   const isOperational = ['admin', 'engineer', 'field'].includes(userRole);
@@ -53,6 +55,7 @@ export default function ProjectOperationsTab({
             teamMembers={teamMembers}
             cadRevisions={cadRevisions}
             onUpdateFiles={onUpdateFiles}
+            onUpdateProject={onUpdateProject}
           />
         </section>
       )}

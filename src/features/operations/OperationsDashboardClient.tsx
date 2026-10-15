@@ -14,8 +14,8 @@ const STAGE_CONFIG: Record<string, { label: string; color: string; bg: string; d
   field_work:       { label: "Field Survey",    color: "text-emerald-500", bg: "bg-emerald-500/10", dot: "bg-emerald-500" },
   data_sync:        { label: "Data Sync",       color: "text-cyan-500",    bg: "bg-cyan-500/10",    dot: "bg-cyan-500" },
   review:           { label: "QC Review",       color: "text-purple-500",  bg: "bg-purple-500/10",  dot: "bg-purple-500" },
-  final_review:     { label: "Final Review",    color: "text-orange-500",  bg: "bg-orange-500/10",  dot: "bg-orange-500" },
-  completed:        { label: "Completed",       color: "text-emerald-500", bg: "bg-emerald-500/10", dot: "bg-emerald-500" },
+  completed:        { label: "Delivered",       color: "text-emerald-500", bg: "bg-emerald-500/10", dot: "bg-emerald-500" },
+  delivered:        { label: "Delivered",       color: "text-emerald-500", bg: "bg-emerald-500/10", dot: "bg-emerald-500" },
 };
 
 const ROLE_COLOR: Record<string, string> = {

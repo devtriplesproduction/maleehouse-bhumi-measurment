@@ -145,7 +145,8 @@ async function ProjectContentWrapper({ project, profile, user, role, theme, para
     filesRes,
     assignmentsRes,
     milestonesRes,
-    activityLogsRes
+    activityLogsRes,
+    materialsRes
   ] = await Promise.all([
     supabase
       .from('workflow_history')
@@ -179,6 +180,11 @@ async function ProjectContentWrapper({ project, profile, user, role, theme, para
       .eq('project_id', params.id)
       .order('created_at', { ascending: false })
       .limit(50),
+    supabase
+      .from('material_requests')
+      .select('id, item_name, quantity, status, notes, assigned_to, assigned_by, submitted_at, submitted_by, responsible_person, responsible_person_name, lost_reason, lost_reported_at, resolution_status, created_at')
+      .eq('project_id', params.id)
+      .order('created_at', { ascending: false }),
   ]);
 
   const files = filesRes.data || [];
@@ -189,6 +195,7 @@ async function ProjectContentWrapper({ project, profile, user, role, theme, para
   const rawComments = commentsRes.data || [];
   const rawAssignments = assignmentsRes.data || [];
   const rawActivityLogs = activityLogsRes.data || [];
+  const rawMaterials = materialsRes.data || [];
   
   if (assignmentsRes.error) console.error("Assignments Fetch Error:", assignmentsRes.error);
 
@@ -198,6 +205,11 @@ async function ProjectContentWrapper({ project, profile, user, role, theme, para
   rawComments.forEach((c: any) => c.user_id && uniqueUserIds.add(c.user_id));
   rawAssignments.forEach((a: any) => a.user_id && uniqueUserIds.add(a.user_id));
   rawActivityLogs.forEach((l: any) => l.user_id && uniqueUserIds.add(l.user_id));
+  rawMaterials.forEach((m: any) => {
+    if (m.assigned_to) uniqueUserIds.add(m.assigned_to);
+    if (m.assigned_by) uniqueUserIds.add(m.assigned_by);
+    if (m.responsible_person) uniqueUserIds.add(m.responsible_person);
+  });
 
   // Full staff directory for team assignment (must not be limited to people already on the project)
   // + referenced profiles for activity names
@@ -239,6 +251,30 @@ async function ProjectContentWrapper({ project, profile, user, role, theme, para
   
   const mappedActivityLogs = attachProfile(rawActivityLogs, 'user_id', 'actor_profile');
   const activityLogs = filterActivityLogsByRole(mappedActivityLogs, profile?.role || 'user');
+
+  const initialMaterials = rawMaterials.map((m: any) => {
+    const assignedProfile = m.assigned_to ? userMap.get(m.assigned_to) : null;
+    const assignerProfile = m.assigned_by ? userMap.get(m.assigned_by) : null;
+    const respProfile = m.responsible_person ? userMap.get(m.responsible_person) : null;
+
+    return {
+      id: m.id,
+      item: m.item_name,
+      quantity: m.quantity,
+      status: m.status,
+      notes: m.notes,
+      assigned_to: m.assigned_to,
+      assigned_to_name: assignedProfile ? `${assignedProfile.first_name || ''} ${assignedProfile.last_name || ''}`.trim() : null,
+      assigned_by_name: assignerProfile ? `${assignerProfile.first_name || ''} ${assignerProfile.last_name || ''}`.trim() : null,
+      submitted_at: m.submitted_at,
+      responsible_person_id: m.responsible_person,
+      responsible_person_name: m.responsible_person_name || (respProfile ? `${respProfile.first_name || ''} ${respProfile.last_name || ''}`.trim() : null),
+      lost_reason: m.lost_reason,
+      lost_reported_at: m.lost_reported_at,
+      resolution_status: m.resolution_status || "unresolved",
+      created_at: m.created_at
+    };
+  });
 
   const isStageBlocked = (milestones || []).some(
     (m: any) => m.status !== 'paid' && (m.linked_stage === project.status || m.block_after_stage === project.status)
@@ -305,6 +341,7 @@ async function ProjectContentWrapper({ project, profile, user, role, theme, para
             milestones={milestones}
             allUsers={allUsers}
             fieldReports={fieldReports}
+            initialMaterials={initialMaterials}
             theme={theme}
             serverRenderTime={Date.now()}
           />

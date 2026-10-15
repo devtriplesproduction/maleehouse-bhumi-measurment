@@ -30,6 +30,7 @@ function buildOpsProjectsQuery(supabase: any, userId: string, role: string) {
       .select("*, project_assignments(*)")
       .in("status", [...OPS_ACTIVE_STATUSES])
       .is("deleted_at", null)
+      .neq("id", "PRJ-PRINT-DESK")
       .order("updated_at", { ascending: false });
   }
 
@@ -38,6 +39,7 @@ function buildOpsProjectsQuery(supabase: any, userId: string, role: string) {
     .select("*, project_assignments!inner(*)")
     .in("status", [...OPS_ACTIVE_STATUSES])
     .is("deleted_at", null)
+    .neq("id", "PRJ-PRINT-DESK")
     .eq("project_assignments.user_id", userId)
     .order("updated_at", { ascending: false });
 }
@@ -320,8 +322,8 @@ export async function getAdminWorkspaceDataAction(): Promise<WorkspaceResponse<a
         pendingEodsQuery,
         upcomingHolidayQuery,
       ] = await Promise.all([
-        supabase.from('projects').select('id', { count: 'exact', head: true }).in('status', ['prototype', 'review', 'field_work', 'data_sync', 'final_review']).is('deleted_at', null),
-        supabase.from('projects').select('status').is('deleted_at', null).limit(500),
+        supabase.from('projects').select('id', { count: 'exact', head: true }).in('status', ['prototype', 'review', 'field_work', 'data_sync', 'final_review']).is('deleted_at', null).neq('id', 'PRJ-PRINT-DESK'),
+        supabase.from('projects').select('status').is('deleted_at', null).neq('id', 'PRJ-PRINT-DESK').limit(500),
         supabase.from('expenses').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
         supabase.from('project_milestones').select('id', { count: 'exact', head: true }).in('status', ['pending', 'payment_verification_pending']),
         supabase.from('field_reports').select('id', { count: 'exact', head: true }).eq('status', 'submitted'),

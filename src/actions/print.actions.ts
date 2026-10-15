@@ -97,7 +97,7 @@ async function processPrintPaymentInternal(
       id: targetProjectId,
       name: 'Walk-in Print Jobs (Generic)',
       client_name: 'Walk-in',
-      status: 'project_created',
+      status: 'archived',
       created_by: profile.id,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()

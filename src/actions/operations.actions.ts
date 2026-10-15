@@ -1134,7 +1134,7 @@ export async function getOperationsQueueAction() {
     ];
 
     let [{ data: projects }, { data: assignments }] = await Promise.all([
-      supabase.from('projects').select('*').is('deleted_at', null).in('status', operationalStages),
+      supabase.from('projects').select('*').is('deleted_at', null).neq('id', 'PRJ-PRINT-DESK').in('status', operationalStages),
       supabase.from('project_assignments').select('*')
     ]);
 
@@ -1194,7 +1194,7 @@ export async function getMyAssignedProjectsAction() {
     
     // Include unassigned projects in 'project_created' phase for engineers (and admins) to claim/view
     if (profile.role === 'engineer' || profile.role === 'admin') {
-      const { data: createdProjects } = await supabase.from('projects').select('id').eq('status', 'project_created').is('deleted_at', null);
+      const { data: createdProjects } = await supabase.from('projects').select('id').eq('status', 'project_created').is('deleted_at', null).neq('id', 'PRJ-PRINT-DESK');
       if (createdProjects && createdProjects.length > 0) {
         const createdIds = createdProjects.map((p: any) => p.id);
         const { data: engineerAssignments } = await supabase.from('project_assignments').select('project_id').in('project_id', createdIds).eq('role', 'engineer');
@@ -1212,7 +1212,7 @@ export async function getMyAssignedProjectsAction() {
 
     // Include unassigned projects in 'field_assigned' phase for field roles to claim/view
     if (['field', 'admin'].includes(profile.role)) {
-      const { data: fieldProjects } = await supabase.from('projects').select('id').eq('status', 'field_assigned').is('deleted_at', null);
+      const { data: fieldProjects } = await supabase.from('projects').select('id').eq('status', 'field_assigned').is('deleted_at', null).neq('id', 'PRJ-PRINT-DESK');
       if (fieldProjects && fieldProjects.length > 0) {
         const fieldIds = fieldProjects.map((p: any) => p.id);
         const { data: fieldAssignments } = await supabase.from('project_assignments').select('project_id').in('project_id', fieldIds).in('role', ['field']);
@@ -1230,7 +1230,7 @@ export async function getMyAssignedProjectsAction() {
 
     let projects = [];
     if (projectIdsArray.length > 0) {
-      const res = await supabase.from('projects').select('*').is('deleted_at', null).in('id', projectIdsArray);
+      const res = await supabase.from('projects').select('*').is('deleted_at', null).neq('id', 'PRJ-PRINT-DESK').in('id', projectIdsArray);
       projects = res.data || [];
     }
 

@@ -173,10 +173,11 @@ export default function ProjectOverviewTab({
   const hasAccessToOps = isAdmin || isClaimedByMe || ((isEngineer || isField) && !isProjectClosed);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 pb-10">
-      
-      {/* LEFT COLUMN: Project Details & Team (40%) */}
-      <div className="lg:col-span-2 space-y-8">
+    <div className="space-y-8 pb-10">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+        
+        {/* LEFT COLUMN: Project Details & Team (40%) */}
+        <div className="lg:col-span-2 space-y-8">
         
         {/* Project Details Block */}
         <div className="glass-card p-6">
@@ -346,15 +347,6 @@ export default function ProjectOverviewTab({
           canAssign={(isAdmin || isEngineer) && !isProjectClosed}
         />
 
-        {/* Material Assignment */}
-        <ProjectMaterialsSection 
-          projectId={project.id}
-          assignments={teamMembers || []}
-          staff={allUsers || []}
-          canAssign={(isAdmin || isEngineer) && !isProjectClosed}
-          initialMaterials={initialMaterials}
-        />
-
       </div>
 
       {/* RIGHT COLUMN: Operations (60%) */}
@@ -406,6 +398,17 @@ export default function ProjectOverviewTab({
           </div>
         )}
       </div>
+
+      </div>
+
+      {/* Material Assignment - Full Width */}
+      <ProjectMaterialsSection 
+        projectId={project.id}
+        assignments={teamMembers || []}
+        staff={allUsers || []}
+        canAssign={(isAdmin || isEngineer) && !isProjectClosed}
+        initialMaterials={initialMaterials}
+      />
 
     </div>
   );

@@ -21,6 +21,7 @@ import {
   Coins,
   PackageX,
   Printer,
+  Wrench,
 } from "lucide-react";
 import { BaseSidebar } from "./BaseSidebar";
 
@@ -41,6 +42,7 @@ const adminLinks = [
     subLinks: [
       { title: "All Projects", href: "/projects", icon: FileText },
       { title: "Print Desk", href: "/prints", icon: Printer },
+      { title: "Equipment Catalog", href: "/equipments", icon: Wrench },
       { title: "Lost Equipment", href: "/admin/lost-materials", icon: PackageX },
       { title: "Milestones", href: "/admin/milestones", icon: ScrollText },
       { title: "Clients", href: "/clients", icon: Briefcase },

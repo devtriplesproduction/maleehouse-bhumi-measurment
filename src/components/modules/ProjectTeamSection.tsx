@@ -25,7 +25,6 @@ interface ProjectTeamSectionProps {
 
 const ASSIGNMENT_ROLES = [
   { id: 'engineer', label: 'Engineer' },
-  { id: 'lidar_specialist', label: 'Lidar Specialist' },
   { id: 'field', label: 'Field Crew' },
 ];
 
@@ -45,11 +44,8 @@ function staffMatchesRole(s: { role?: string; designation?: string }, selectedRo
   if (want === 'field') {
     return role === 'field' || desig.includes('field') || desig.includes('survey');
   }
-  if (want === 'lidar_specialist') {
-    return desig.includes('lidar') || role === 'lidar_specialist';
-  }
   if (want === 'engineer') {
-    return role === 'engineer' || desig.includes('engineer');
+    return role === 'engineer' || desig.includes('engineer') || desig.includes('lidar');
   }
   return false;
 }
@@ -213,7 +209,7 @@ export function ProjectTeamSection({ projectId, assignments, staff, canAssign }:
           </div>
           <p className="font-bold text-xs text-slate-700 dark:text-slate-300">No team members assigned yet</p>
           <p className="text-[11px] text-slate-400 mt-1 max-w-[260px] mx-auto leading-relaxed">
-            Assign engineers, lidar specialists, and field crew to collaborate on this project.
+            Assign engineers and field crew to collaborate on this project.
           </p>
         </div>
       ) : (

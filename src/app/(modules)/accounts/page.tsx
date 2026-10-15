@@ -16,7 +16,7 @@ import { KPICard } from "@/components/modules/KPICard";
 export default async function AccountantDashboardPage() {
   const supabase: any = await createClient();
   const [projectsRes, milestonesRes, overviewRes, profitRes, eodRes] = await Promise.all([
-    supabase.from('projects').select('id, status, created_at, deleted_at').is('deleted_at', null),
+    supabase.from('projects').select('id, status, created_at, deleted_at').is('deleted_at', null).neq('id', 'PRJ-PRINT-DESK'),
     getAllMilestonesAction(),
     getFinancialOverviewAction(),
     getProjectProfitabilityAction(),

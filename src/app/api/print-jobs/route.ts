@@ -87,7 +87,7 @@ export async function POST(req: Request) {
           id: 'PRJ-PRINT-DESK',
           name: 'Walk-in Print Jobs (Generic)',
           client_name: 'Walk-in',
-          status: 'project_created',
+          status: 'archived',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         });

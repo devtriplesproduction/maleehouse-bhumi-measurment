@@ -5,7 +5,7 @@
 
 -- Ensure the walk-in print project exists
 INSERT INTO public.projects (id, name, client_name, status, created_by)
-SELECT 'PRJ-PRINT-DESK', 'Walk-in Print Jobs (Generic)', 'Walk-in Print Jobs (Generic)', 'project_created', (SELECT id FROM profiles LIMIT 1)
+SELECT 'PRJ-PRINT-DESK', 'Walk-in Print Jobs (Generic)', 'Walk-in Print Jobs (Generic)', 'archived', (SELECT id FROM profiles LIMIT 1)
 WHERE NOT EXISTS (
   SELECT 1 FROM public.projects WHERE id = 'PRJ-PRINT-DESK'
 );

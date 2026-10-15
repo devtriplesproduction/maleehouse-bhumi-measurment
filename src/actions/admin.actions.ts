@@ -747,6 +747,7 @@ export async function getMilestonePaymentStatusAggregateAction() {
       .from('projects')
       .select('id, status')
       .not('status', 'in', '("completed","archived")')
+      .neq('id', 'PRJ-PRINT-DESK')
       
     if (projectsError) throw projectsError
     
@@ -828,6 +829,7 @@ export async function getMonthlyProjectCreationTrendAction(selectedYear?: number
     const { data: projects, error } = await supabaseAdmin
       .from('projects')
       .select('id, created_at')
+      .neq('id', 'PRJ-PRINT-DESK')
       .gte('created_at', startDate)
       .lt('created_at', endDate)
 

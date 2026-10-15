@@ -29,7 +29,7 @@ export async function getGlobalActivityAction(): Promise<GlobalActivityItem[]> {
       supabase.from('files').select('*, profiles!uploaded_by(first_name, last_name, role)').order('uploaded_at', { ascending: false }).limit(50),
       supabase.from('project_assignments').select('*, profiles!user_id(first_name, last_name, role)').order('assigned_at', { ascending: false }).limit(50),
       supabase.from('comments').select('*, profiles!user_id(first_name, last_name, role)').is('deleted_at', null).order('created_at', { ascending: false }).limit(50),
-      supabase.from('projects').select('id, name'),
+      supabase.from('projects').select('id, name').neq('id', 'PRJ-PRINT-DESK'),
     ])
 
     const projects: any[] = (profileRes.data as any[]) || []

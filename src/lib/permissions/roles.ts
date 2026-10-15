@@ -37,6 +37,7 @@ export const PATH_PERMISSIONS: Record<string, Role[]> = {
   "/sop": ["admin", "sales", "accountant", "engineer", "field", "hr"],
   "/leaves": ["admin", "sales", "accountant", "engineer", "field", "hr"],
   "/projects": ["admin", "sales", "accountant", "engineer", "field", "hr"],
+  "/equipments": ["admin", "engineer"],
   "/hr": ["admin", "hr"],
   "/developer": ["developer"],
 };

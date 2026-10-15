@@ -1,6 +1,6 @@
 "use client";
 
-import { LayoutDashboard, FileText, BookOpen, Clock, CalendarCheck, PlaneTakeoff, Megaphone, Printer } from "lucide-react";
+import { LayoutDashboard, FileText, BookOpen, Clock, CalendarCheck, PlaneTakeoff, Megaphone, Printer, Wrench } from "lucide-react";
 import { BaseSidebar } from "./BaseSidebar";
 
 export function EngineerSidebar() {
@@ -8,6 +8,7 @@ export function EngineerSidebar() {
     { title: "Dashboard", href: "/engineer", icon: LayoutDashboard },
     { title: "Projects", href: "/projects", icon: FileText },
     { title: "Print Desk", href: "/prints", icon: Printer },
+    { title: "Equipments", href: "/equipments", icon: Wrench },
     { title: "SOP Library", href: "/sop", icon: BookOpen },
     { title: "EOD Reports", href: "/eod", icon: Clock },
     { title: "My Attendance", href: "/attendance", icon: CalendarCheck },

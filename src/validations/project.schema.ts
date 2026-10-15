@@ -17,6 +17,7 @@ export const projectMilestoneInputSchema = z.object({
   title: z.string().min(1, { message: 'Milestone title is required.' }),
   description: z.string().optional().nullable(),
   amount: z.coerce.number().positive({ message: 'Milestone amount must be greater than 0.' }),
+  percentage: z.union([z.string(), z.number()]).optional().nullable(),
   due_date: z.string().optional().nullable(),
   linked_stage: z.string().optional().nullable(),
   is_activation_gate: z.boolean().default(false),
@@ -77,14 +78,17 @@ export const baseProjectSchema = z.object({
 });
 
 export const createProjectSchema = baseProjectSchema.refine((data) => {
-  const total = Number(data.amount || 0);
-  if (total > 0 && data.milestones && data.milestones.length > 0) {
+  const base = Number(data.amount || 0);
+  const gstRate = data.gst_rate || (data.gst_type === 'cgst_sgst_2_5' || data.gst_type === 'igst_5' ? 5 : data.gst_type === 'cgst_sgst_5' ? 10 : 0);
+  const totalContract = base + Math.round((base * gstRate) / 100);
+
+  if (base > 0 && data.milestones && data.milestones.length > 0) {
     const sum = data.milestones.reduce((acc, m) => acc + (Number(m.amount) || 0), 0);
-    return Math.abs(sum - total) <= 1;
+    return Math.abs(sum - totalContract) <= 1 || Math.abs(sum - base) <= 1;
   }
   return true;
 }, {
-  message: 'Sum of milestone amounts must match the total project amount.',
+  message: 'Sum of milestone amounts must match the total contract amount.',
   path: ['milestones']
 });
 

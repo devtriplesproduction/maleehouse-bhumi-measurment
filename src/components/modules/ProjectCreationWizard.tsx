@@ -27,7 +27,11 @@ import {
   ShieldCheck,
   IndianRupee,
   Percent,
+  Target,
+  Trash2,
+  Sparkles,
 } from 'lucide-react';
+import { PremiumDatePicker } from '@/components/ui/PremiumDatePicker';
 import { cn } from '@/lib/utils';
 import { createProjectSchema, type CreateProjectInput } from '@/validations/project.schema';
 import { createProjectAction } from '@/actions/project.actions';
@@ -40,7 +44,9 @@ type ProjectFormValues = CreateProjectInput;
 const STEPS = [
   { id: 1, title: 'Customer & Site', icon: Building2 },
   { id: 2, title: 'Survey Services', icon: Layers },
-  { id: 3, title: 'Review & Create', icon: ShieldCheck },
+  { id: 3, title: 'Commercial & Tax', icon: IndianRupee },
+  { id: 4, title: 'Milestones', icon: Target },
+  { id: 5, title: 'Review & Create', icon: ShieldCheck },
 ];
 
 import { SearchableSelect } from '@/components/ui/searchable-select';
@@ -193,12 +199,172 @@ export function ProjectCreationWizard() {
   const { handleSubmit, formState: { errors }, watch, setValue, trigger } = methods;
 
   const selectedServices = watch('services') || [];
+
+  const baseAmount = Number(watch('amount') || 0);
+  const gstType = watch('gst_type') || 'no_gst';
+  const gstRate = (gstType === 'cgst_sgst_2_5' || gstType === 'igst_5') ? 5 : gstType === 'cgst_sgst_5' ? 10 : 0;
+  const calculatedGst = Math.round((baseAmount * gstRate) / 100);
+  const totalContractValue = baseAmount + calculatedGst;
+
+  const milestones = watch('milestones') || [];
+  const milestoneSum = milestones.reduce((sum: number, m: any) => sum + (Number(m.amount) || 0), 0);
+  const milestonePct = totalContractValue > 0 ? (milestoneSum / totalContractValue) * 100 : 0;
+  const milestoneDiff = totalContractValue - milestoneSum;
+  const isMilestonesBalanced = Math.abs(milestoneDiff) <= 1;
+
+  const addMilestoneRow = () => {
+    const current = watch('milestones') || [];
+    const currentSum = current.reduce((sum: number, m: any) => sum + (Number(m.amount) || 0), 0);
+    const remainingAmount = Math.max(0, totalContractValue - currentSum);
+    const initialAmt = remainingAmount > 0 ? remainingAmount : 0;
+    const initialPct = totalContractValue > 0 && initialAmt > 0
+      ? ((initialAmt / totalContractValue) * 100).toFixed(1).replace(/\.0$/, '')
+      : "";
+
+    const newRow = {
+      id: `temp-${Date.now()}-${current.length}`,
+      title: current.length === 0 ? "Advance Payment" : `Milestone #${current.length + 1}`,
+      amount: initialAmt,
+      percentage: initialPct,
+      due_date: watch('target_completion_date') || "",
+      is_activation_gate: current.length === 0,
+      linked_stage: current.length === 0 ? "data_collection" : "",
+    };
+    setValue('milestones', [...current, newRow], { shouldValidate: true });
+  };
+
+  const removeMilestoneRow = (index: number) => {
+    const current = [...(watch('milestones') || [])];
+    current.splice(index, 1);
+    setValue('milestones', current, { shouldValidate: true });
+  };
+
+  const updateMilestoneRow = (index: number, field: string, value: any) => {
+    const current = [...(watch('milestones') || [])];
+    let m = { ...current[index], [field]: value };
+
+    if (field === 'percentage' && totalContractValue > 0 && value !== "") {
+      const pct = parseFloat(value);
+      if (!isNaN(pct)) {
+        m.amount = Math.round(totalContractValue * (pct / 100));
+      }
+    } else if (field === 'amount' && totalContractValue > 0 && value !== "") {
+      const amt = parseFloat(value);
+      if (!isNaN(amt)) {
+        m.percentage = ((amt / totalContractValue) * 100).toFixed(1).replace(/\.0$/, '');
+      }
+    }
+
+    current[index] = m;
+    setValue('milestones', current, { shouldValidate: true });
+  };
+
+  const applyPreset = (preset: '100' | '50_50' | '40_40_20') => {
+    if (totalContractValue <= 0) {
+      toast.error("Please enter a base commercial amount first.");
+      return;
+    }
+
+    const dueDate = watch('target_completion_date') || "";
+
+    if (preset === '100') {
+      setValue('milestones', [
+        {
+          id: `temp-${Date.now()}-0`,
+          title: "Advance Payment",
+          amount: totalContractValue,
+          percentage: "100",
+          due_date: dueDate,
+          is_activation_gate: true,
+          linked_stage: "data_collection"
+        }
+      ], { shouldValidate: true });
+    } else if (preset === '50_50') {
+      const half = Math.round(totalContractValue / 2);
+      setValue('milestones', [
+        {
+          id: `temp-${Date.now()}-0`,
+          title: "50% Mobilization Advance",
+          amount: half,
+          percentage: "50",
+          due_date: "",
+          is_activation_gate: true,
+          linked_stage: "data_collection"
+        },
+        {
+          id: `temp-${Date.now()}-1`,
+          title: "50% Final Deliverables",
+          amount: totalContractValue - half,
+          percentage: "50",
+          due_date: dueDate,
+          is_activation_gate: false,
+          linked_stage: "final_review"
+        }
+      ], { shouldValidate: true });
+    } else if (preset === '40_40_20') {
+      const p1 = Math.round(totalContractValue * 0.4);
+      const p2 = Math.round(totalContractValue * 0.4);
+      const p3 = totalContractValue - p1 - p2;
+      setValue('milestones', [
+        {
+          id: `temp-${Date.now()}-0`,
+          title: "40% Advance Payment",
+          amount: p1,
+          percentage: "40",
+          due_date: "",
+          is_activation_gate: true,
+          linked_stage: "data_collection"
+        },
+        {
+          id: `temp-${Date.now()}-1`,
+          title: "40% Survey Completion",
+          amount: p2,
+          percentage: "40",
+          due_date: "",
+          is_activation_gate: false,
+          linked_stage: "field_work"
+        },
+        {
+          id: `temp-${Date.now()}-2`,
+          title: "20% Final Sign-off",
+          amount: p3,
+          percentage: "20",
+          due_date: dueDate,
+          is_activation_gate: false,
+          linked_stage: "final_review"
+        }
+      ], { shouldValidate: true });
+    }
+  };
+
   const handleNext = async () => {
     let fieldsToValidate: (keyof ProjectFormValues)[] = [];
     if (step === 1) {
       fieldsToValidate = ['name', 'client_name', 'phone', 'email', 'client_address', 'state_code', 'site_type', 'survey_requirements'];
     } else if (step === 2) {
       fieldsToValidate = ['services'];
+    } else if (step === 3) {
+      fieldsToValidate = ['amount', 'gst_type'];
+    } else if (step === 4) {
+      const ms = watch('milestones') || [];
+      if (ms.length > 0) {
+        for (let i = 0; i < ms.length; i++) {
+          if (!ms[i].title?.trim()) {
+            toast.error(`Milestone #${i + 1} requires a title.`);
+            return;
+          }
+          if (Number(ms[i].amount) <= 0) {
+            toast.error(`Milestone "${ms[i].title}" amount must be greater than 0.`);
+            return;
+          }
+        }
+        const total = totalContractValue;
+        const sum = ms.reduce((acc: number, m: any) => acc + (Number(m.amount) || 0), 0);
+        if (total > 0 && Math.abs(sum - total) > 1) {
+          toast.error(`Total milestone amount (₹${Math.round(sum).toLocaleString('en-IN')}) must equal the contract value (₹${Math.round(total).toLocaleString('en-IN')}).`);
+          return;
+        }
+      }
     }
 
     const isValid = await trigger(fieldsToValidate);
@@ -367,7 +533,7 @@ export function ProjectCreationWizard() {
                             {selectedServices.length} Selected
                           </span>
                         )}
-                        {step === 3 && (
+                        {step === 4 && (
                           <span className={cn("text-xs font-medium px-2.5 py-1 rounded-full shrink-0 mb-1", c.bgLight, c.text)}>
                             {(watch('milestones') || []).length} Milestones
                           </span>
@@ -686,7 +852,7 @@ export function ProjectCreationWizard() {
                         </div>
                       )}
 
-                      {/* STEP 3: Commercial Amount & Review */}
+                      {/* STEP 3: Commercial & Tax */}
                       {step === 3 && (
                         <div className="space-y-6">
 
@@ -761,7 +927,6 @@ export function ProjectCreationWizard() {
                                     </Select>
                                   )}
                                 />
-
                               </div>
                             </div>
 
@@ -811,20 +976,241 @@ export function ProjectCreationWizard() {
                                 <div className="pt-2 border-t border-slate-200 dark:border-white/10 flex justify-between items-center text-sm font-bold text-slate-900 dark:text-white">
                                   <span>Total Agreed Contract Value:</span>
                                   <span className="text-emerald-600 dark:text-emerald-400">
-                                    ₹{(
-                                      Number(watch('amount') || 0) +
-                                      (watch('gst_type') === 'cgst_sgst_2_5' || watch('gst_type') === 'igst_5'
-                                        ? Math.round(Number(watch('amount') || 0) * 0.05)
-                                        : watch('gst_type') === 'cgst_sgst_5'
-                                          ? Math.round(Number(watch('amount') || 0) * 0.10)
-                                          : 0)
-                                    ).toLocaleString('en-IN')}
+                                    ₹{totalContractValue.toLocaleString('en-IN')}
                                   </span>
                                 </div>
                               </div>
                             )}
 
                           </div>
+                        </div>
+                      )}
+
+                      {/* STEP 4: Payment Milestones */}
+                      {step === 4 && (
+                        <div className="space-y-6">
+                          {/* Top Summary Card */}
+                          <div className="glass-card bg-slate-50/50 dark:bg-white/[0.02] border border-slate-200/60 dark:border-white/10 rounded-2xl p-6 space-y-4">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                              <div>
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total Contract Value</p>
+                                <p className="text-xl font-bold text-slate-900 dark:text-white">
+                                  ₹{totalContractValue.toLocaleString('en-IN')}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-4 text-xs font-medium">
+                                <div>
+                                  <span className="text-slate-400 block text-[10px] font-bold uppercase tracking-wider">Allocated</span>
+                                  <span className={cn("font-bold text-sm", isMilestonesBalanced ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400")}>
+                                    ₹{Math.round(milestoneSum).toLocaleString('en-IN')} ({milestonePct.toFixed(0)}%)
+                                  </span>
+                                </div>
+                                <div className="border-l border-slate-200 dark:border-white/10 pl-4">
+                                  <span className="text-slate-400 block text-[10px] font-bold uppercase tracking-wider">Remaining</span>
+                                  <span className={cn("font-bold text-sm", isMilestonesBalanced ? "text-emerald-600 dark:text-emerald-400" : milestoneDiff < 0 ? "text-rose-500" : "text-slate-700 dark:text-slate-300")}>
+                                    ₹{Math.round(Math.abs(milestoneDiff)).toLocaleString('en-IN')} {milestoneDiff < 0 ? 'over' : ''}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Progress Bar */}
+                            <div className="h-2 w-full bg-slate-200/80 dark:bg-white/10 rounded-full overflow-hidden">
+                              <div
+                                className={cn(
+                                  "h-full transition-all duration-300 rounded-full",
+                                  isMilestonesBalanced ? "bg-emerald-500" : milestoneSum > totalContractValue ? "bg-rose-500" : "bg-indigo-600"
+                                )}
+                                style={{ width: `${Math.min(100, Math.max(0, milestonePct))}%` }}
+                              />
+                            </div>
+
+                            {/* Preset Buttons Bar */}
+                            <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-slate-200/60 dark:border-white/5">
+                              <span className="text-[11px] font-semibold text-slate-400 mr-1 flex items-center gap-1">
+                                <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+                                Presets:
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => applyPreset('100')}
+                                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 transition"
+                              >
+                                100% Advance
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => applyPreset('50_50')}
+                                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 transition"
+                              >
+                                50% - 50%
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => applyPreset('40_40_20')}
+                                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-500/10 dark:hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 transition"
+                              >
+                                40% - 40% - 20%
+                              </button>
+                              <button
+                                type="button"
+                                onClick={addMilestoneRow}
+                                className="ml-auto px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white transition flex items-center gap-1.5 shadow-sm"
+                              >
+                                <Plus className="w-3.5 h-3.5" />
+                                Add Milestone
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Milestone Rows */}
+                          {milestones.length === 0 ? (
+                            <div className="text-center py-10 px-4 rounded-2xl border-2 border-dashed border-slate-200 dark:border-white/10 bg-slate-50/50 dark:bg-white/[0.01]">
+                              <Target className="w-10 h-10 text-indigo-500 mx-auto mb-2 opacity-80" />
+                              <h4 className="text-sm font-bold text-slate-800 dark:text-white">Single 100% Advance Payment (Default)</h4>
+                              <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto leading-relaxed">
+                                No custom milestones configured. The full contract value of ₹{totalContractValue.toLocaleString('en-IN')} will be created as a single advance payment milestone.
+                              </p>
+                              <div className="mt-4 flex justify-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={addMilestoneRow}
+                                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-sm"
+                                >
+                                  <Plus className="w-3.5 h-3.5" />
+                                  Add Custom Milestones
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="space-y-3.5">
+                              {milestones.map((m: any, idx: number) => (
+                                <div
+                                  key={m.id || idx}
+                                  className="p-5 rounded-2xl bg-white dark:bg-[#151923] border border-slate-200 dark:border-white/10 shadow-sm relative group space-y-3.5"
+                                >
+                                  <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-white/5">
+                                    <span className="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
+                                      <Target className="w-3.5 h-3.5" />
+                                      Milestone #{idx + 1}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => removeMilestoneRow(idx)}
+                                      className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition"
+                                      title="Remove Milestone"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+
+                                  <div>
+                                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                                      Milestone Title
+                                    </label>
+                                    <input
+                                      type="text"
+                                      value={m.title || ''}
+                                      onChange={(e) => updateMilestoneRow(idx, 'title', e.target.value)}
+                                      placeholder="e.g. 50% Mobilization Advance"
+                                      className="glass-input h-10 font-medium text-xs text-slate-800 dark:text-white"
+                                    />
+                                  </div>
+
+                                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                    <div>
+                                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                                        Percentage (%)
+                                      </label>
+                                      <div className="relative">
+                                        <input
+                                          type="number"
+                                          min="0"
+                                          max="100"
+                                          value={m.percentage ?? ''}
+                                          onChange={(e) => updateMilestoneRow(idx, 'percentage', e.target.value)}
+                                          placeholder="%"
+                                          className="glass-input h-10 pr-7 font-semibold text-xs text-slate-800 dark:text-white [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                        />
+                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 pointer-events-none">%</span>
+                                      </div>
+                                    </div>
+
+                                    <div>
+                                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                                        Amount (₹)
+                                      </label>
+                                      <div className="relative">
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 pointer-events-none">₹</span>
+                                        <input
+                                          type="number"
+                                          min="0"
+                                          value={m.amount || ''}
+                                          onChange={(e) => updateMilestoneRow(idx, 'amount', e.target.value)}
+                                          placeholder="Amount"
+                                          className="glass-input h-10 !pl-7 font-semibold text-xs text-slate-800 dark:text-white [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                        />
+                                      </div>
+                                    </div>
+
+                                    <div>
+                                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                                        Due Date
+                                      </label>
+                                      <PremiumDatePicker
+                                        value={m.due_date?.split('T')[0] || ''}
+                                        onChange={(date) => updateMilestoneRow(idx, 'due_date', date)}
+                                        side="bottom"
+                                        triggerClassName="h-10 rounded-xl bg-slate-50 dark:bg-white/5 text-xs font-medium"
+                                      />
+                                    </div>
+                                  </div>
+
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                                    <div>
+                                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                                        Linked Workflow Stage
+                                      </label>
+                                      <Select
+                                        value={m.linked_stage || 'none'}
+                                        onValueChange={(val) => updateMilestoneRow(idx, 'linked_stage', val === 'none' ? null : val)}
+                                        placeholder="-- No linked stage --"
+                                        buttonClassName="glass-input h-10 text-xs text-slate-800 dark:text-white font-medium"
+                                      >
+                                        <SelectItem value="none">-- No linked stage --</SelectItem>
+                                        <SelectItem value="data_collection">1. Data Collection</SelectItem>
+                                        <SelectItem value="field_assigned">2. Field Team Assignment</SelectItem>
+                                        <SelectItem value="field_work">3. Survey Collection</SelectItem>
+                                        <SelectItem value="data_sync">4. Survey Validation</SelectItem>
+                                        <SelectItem value="final_review">5. Deliverable Review</SelectItem>
+                                        <SelectItem value="completed">6. Handed Over / Completed</SelectItem>
+                                      </Select>
+                                    </div>
+
+                                    <div className="flex items-center gap-2 sm:pt-5">
+                                      <label className="flex items-center gap-2 cursor-pointer select-none">
+                                        <input
+                                          type="checkbox"
+                                          checked={Boolean(m.is_activation_gate)}
+                                          onChange={(e) => updateMilestoneRow(idx, 'is_activation_gate', e.target.checked)}
+                                          className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 dark:border-white/20"
+                                        />
+                                        <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                                          Activation Gate (Required before Engineering)
+                                        </span>
+                                      </label>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* STEP 5: Review & Create */}
+                      {step === 5 && (
+                        <div className="space-y-6">
 
                           {/* Premium Recap Card */}
                           <div className="glass-card bg-slate-50/50 dark:bg-white/[0.02] border border-slate-200/60 dark:border-white/10 rounded-2xl p-8 space-y-6 relative overflow-hidden shadow-xl">
@@ -886,14 +1272,7 @@ export function ProjectCreationWizard() {
                               <div className="space-y-1 min-w-0">
                                 <p className="text-xs font-medium text-slate-400 dark:text-slate-550 uppercase tracking-widest">Total Contract Value</p>
                                 <p className="text-base font-bold text-emerald-600 dark:text-emerald-400">
-                                  ₹{(
-                                    Number(watch('amount') || 0) +
-                                    (watch('gst_type') === 'cgst_sgst_2_5' || watch('gst_type') === 'igst_5'
-                                      ? Math.round(Number(watch('amount') || 0) * 0.05)
-                                      : watch('gst_type') === 'cgst_sgst_5'
-                                        ? Math.round(Number(watch('amount') || 0) * 0.10)
-                                        : 0)
-                                  ).toLocaleString('en-IN')}
+                                  ₹{totalContractValue.toLocaleString('en-IN')}
                                 </p>
                               </div>
 
@@ -914,6 +1293,56 @@ export function ProjectCreationWizard() {
                                 ))}
                               </div>
                             </div>
+
+                            {/* Milestones Schedule Summary */}
+                            <div className="border-t border-slate-200/60 dark:border-white/5 pt-4 space-y-2.5">
+                              <div className="flex items-center justify-between">
+                                <p className="text-xs font-medium text-slate-400 dark:text-slate-550 uppercase tracking-widest flex items-center gap-1.5">
+                                  <Target className="w-3.5 h-3.5 text-indigo-500" />
+                                  Milestones Schedule ({milestones.length > 0 ? milestones.length : 1})
+                                </p>
+                                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                                  ₹{totalContractValue.toLocaleString('en-IN')} Total
+                                </span>
+                              </div>
+
+                              {milestones.length === 0 ? (
+                                <div className="p-3.5 rounded-xl bg-slate-100/70 dark:bg-white/5 border border-slate-200/80 dark:border-white/10 flex items-center justify-between text-xs">
+                                  <div>
+                                    <p className="font-semibold text-slate-800 dark:text-white">Advance Payment (100% Default)</p>
+                                    <p className="text-[11px] text-slate-400">Full contract amount on project activation</p>
+                                  </div>
+                                  <span className="font-bold text-slate-800 dark:text-white">
+                                    ₹{totalContractValue.toLocaleString('en-IN')}
+                                  </span>
+                                </div>
+                              ) : (
+                                <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar pr-1">
+                                  {milestones.map((m: any, i: number) => (
+                                    <div key={m.id || i} className="p-3 rounded-xl bg-slate-100/70 dark:bg-white/5 border border-slate-200/80 dark:border-white/10 flex items-center justify-between text-xs">
+                                      <div className="min-w-0 pr-2">
+                                        <p className="font-semibold text-slate-800 dark:text-white truncate">
+                                          {i + 1}. {m.title || 'Untitled'}
+                                        </p>
+                                        <p className="text-[11px] text-slate-400">
+                                          {m.due_date ? `Due: ${new Date(m.due_date).toLocaleDateString('en-IN')}` : 'No due date'}
+                                          {m.linked_stage ? ` • ${m.linked_stage.replace('_', ' ')}` : ''}
+                                          {m.is_activation_gate ? ' • Activation Gate' : ''}
+                                        </p>
+                                      </div>
+                                      <div className="text-right shrink-0">
+                                        <span className="font-bold text-slate-800 dark:text-white block">
+                                          ₹{Number(m.amount || 0).toLocaleString('en-IN')}
+                                        </span>
+                                        <span className="text-[10px] text-slate-400 font-medium">
+                                          {m.percentage ? `${m.percentage}%` : ''}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
                           </div>
 
                           <div className={cn("p-6 rounded-2xl border flex items-center justify-between group overflow-hidden relative", c.alertBg)}>
@@ -923,7 +1352,7 @@ export function ProjectCreationWizard() {
                               </div>
                               <div>
                                 <p className="text-xs font-medium text-slate-900 dark:text-white">Everything is Set</p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Please review all values. Clicking below will initialize the project record and its commercial milestone.</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Please review all values. Clicking below will initialize the project record and its commercial milestone schedule.</p>
                               </div>
                             </div>
                           </div>
@@ -949,7 +1378,7 @@ export function ProjectCreationWizard() {
                 {step === 1 ? 'Cancel' : 'Back'}
               </button>
 
-              {step < 3 ? (
+              {step < 5 ? (
                 <button
                   key="btn-wizard-next"
                   type="button"

@@ -518,14 +518,14 @@ export function ProjectMaterialsSection({ projectId, assignments, staff, canAssi
 
             {/* Subparts & Accessories Selection */}
             {selectedSubparts.length > 0 && (
-              <div className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-indigo-500/20 space-y-2.5">
+              <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-indigo-500/20 space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
-                      <Layers className="w-3.5 h-3.5 text-indigo-500" />
+                    <label className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                      <Layers className="w-4 h-4 text-indigo-500" />
                       Select Included Sub-parts & Accessories
                     </label>
-                    <p className="text-[10px] text-slate-400">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                       Check components to include with this equipment (e.g. Battery, Charger):
                     </p>
                   </div>
@@ -540,17 +540,18 @@ export function ProjectMaterialsSection({ projectId, assignments, staff, canAssi
                         ]);
                       }
                     }}
-                    className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 transition flex items-center gap-1"
+                    className="text-xs font-bold px-3 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 transition flex items-center gap-1.5 shrink-0"
                   >
-                    <Plus className="w-3 h-3" />
+                    <Plus className="w-3.5 h-3.5" />
                     Add Part
                   </button>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 max-h-60 overflow-y-auto pr-1 custom-scrollbar">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 max-h-72 overflow-y-auto pr-1 custom-scrollbar">
                   {selectedSubparts.map((sub, idx) => (
                     <div
                       key={idx}
+                      title={sub.name}
                       onClick={() => {
                         setSelectedSubparts((prev) => {
                           const copy = [...prev];
@@ -559,25 +560,25 @@ export function ProjectMaterialsSection({ projectId, assignments, staff, canAssi
                         });
                       }}
                       className={cn(
-                        "flex items-center justify-between p-2 px-3 rounded-xl border text-xs cursor-pointer select-none transition-all",
+                        "flex items-center justify-between p-2.5 px-3 rounded-xl border text-sm cursor-pointer select-none transition-all min-h-[44px]",
                         sub.included
                           ? "bg-indigo-50/80 dark:bg-indigo-500/10 border-indigo-300 dark:border-indigo-500/40 text-slate-800 dark:text-slate-100 shadow-xs"
                           : "bg-slate-50/50 dark:bg-white/[0.02] border-slate-200/60 dark:border-white/5 text-slate-400 opacity-60"
                       )}
                     >
-                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
                         <input
                           type="checkbox"
                           checked={sub.included}
                           onChange={() => {}}
-                          className="w-3.5 h-3.5 rounded text-indigo-600 focus:ring-indigo-500 pointer-events-none"
+                          className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 pointer-events-none shrink-0"
                         />
-                        <span className="text-[11px] font-semibold truncate">{sub.name}</span>
+                        <span className="text-xs sm:text-[13px] font-semibold leading-normal truncate">{sub.name}</span>
                       </div>
 
                       {sub.included && (
                         <div
-                          className="flex items-center gap-1 shrink-0 ml-1.5"
+                          className="flex items-center gap-1 shrink-0 ml-2"
                           onClick={(e) => e.stopPropagation()}
                         >
                           <button
@@ -592,11 +593,11 @@ export function ProjectMaterialsSection({ projectId, assignments, staff, canAssi
                                 return copy;
                               });
                             }}
-                            className="w-4 h-4 rounded bg-slate-200/80 dark:bg-white/10 text-slate-700 dark:text-slate-200 font-bold flex items-center justify-center text-[10px] hover:bg-slate-300"
+                            className="w-5 h-5 rounded bg-slate-200/80 dark:bg-white/10 text-slate-700 dark:text-slate-200 font-bold flex items-center justify-center text-xs hover:bg-slate-300 transition-colors"
                           >
                             -
                           </button>
-                          <span className="text-[10px] font-bold px-1 min-w-[16px] text-center">
+                          <span className="text-xs font-bold px-1.5 min-w-[20px] text-center">
                             {sub.quantity}
                           </span>
                           <button
@@ -608,7 +609,7 @@ export function ProjectMaterialsSection({ projectId, assignments, staff, canAssi
                                 return copy;
                               });
                             }}
-                            className="w-4 h-4 rounded bg-slate-200/80 dark:bg-white/10 text-slate-700 dark:text-slate-200 font-bold flex items-center justify-center text-[10px] hover:bg-slate-300"
+                            className="w-5 h-5 rounded bg-slate-200/80 dark:bg-white/10 text-slate-700 dark:text-slate-200 font-bold flex items-center justify-center text-xs hover:bg-slate-300 transition-colors"
                           >
                             +
                           </button>

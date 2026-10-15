@@ -30,6 +30,8 @@ interface ProjectOverviewTabProps {
   allUsers: any[];
   files: any[];
   cadRevisions?: any[];
+  activityLogs?: any[];
+  comments?: any[];
   onUpdateProject?: (updatedProject: any) => void;
   onUpdateTeamMembers?: (updatedTeamMembers: any[]) => void;
   onUpdateFiles?: (files: any[]) => void;
@@ -43,6 +45,8 @@ export default function ProjectOverviewTab({
   allUsers,
   files,
   cadRevisions = [],
+  activityLogs = [],
+  comments = [],
   onUpdateProject,
   onUpdateTeamMembers,
   onUpdateFiles
@@ -74,10 +78,9 @@ export default function ProjectOverviewTab({
   const isAdmin = userRole === 'admin';
   const isAccountant = userRole === 'accountant';
   const isEngineer = userRole === 'engineer';
-  const isCad = userRole === 'cad';
   const isSales = userRole === 'sales';
 
-  const isSalesAndHandedOver = project.status !== 'lead_created' && project.status !== 'quotation_requested';
+  const isSalesAndHandedOver = project.status !== 'lead_created';
   
   const isClaimedByMe = teamMembers.some((m: any) => m.userId === currentUserId);
   const needsClaiming = isEngineer && !isClaimedByMe && !isAdmin;
@@ -88,17 +91,14 @@ export default function ProjectOverviewTab({
   const canEditAny = canEditAll || canEditPartial;
 
   // Assignment states & actions
-  const [selectedCAD, setSelectedCAD] = useState('');
   const [selectedField, setSelectedField] = useState('');
   const [selectedEngineer, setSelectedEngineer] = useState('');
 
   // Group users by role
-  const cadUsers = allUsers.filter((u: any) => u.role === 'cad');
   const fieldUsers = allUsers.filter((u: any) => u.role === 'field');
   const engineerUsers = allUsers.filter((u: any) => u.role === 'engineer');
 
   const assignedEngineer = teamMembers.find((m: any) => m.role === 'engineer');
-  const assignedCADs = teamMembers.filter((m: any) => m.role === 'cad');
   const assignedFields = teamMembers.filter((m: any) => m.role === 'field');
 
   const handleSave = () => {
@@ -139,7 +139,6 @@ export default function ProjectOverviewTab({
       const res = await assignUserToProjectAction(project.id, userId, role);
       if (res?.success) {
         toast({ title: 'Member Assigned', description: `User assigned as ${role.toUpperCase()} successfully.`, variant: 'success' });
-        if (role === 'cad') setSelectedCAD('');
         if (role === 'field') setSelectedField('');
         if (role === 'engineer') setSelectedEngineer('');
         if (onUpdateTeamMembers && res.data) {
@@ -167,7 +166,7 @@ export default function ProjectOverviewTab({
 
   const isField = userRole === 'field';
 
-  const hasAccessToOps = isAdmin || isClaimedByMe || ((isEngineer || isCad || isField) && !isProjectClosed);
+  const hasAccessToOps = isAdmin || isClaimedByMe || ((isEngineer || isField) && !isProjectClosed);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-8 pb-10">
@@ -332,7 +331,7 @@ export default function ProjectOverviewTab({
 
       </div>
 
-      {/* RIGHT COLUMN: Operations & CAD (60%) */}
+      {/* RIGHT COLUMN: Operations (60%) */}
       <div className="lg:col-span-3 space-y-8">
         {hasAccessToOps && (
           <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
@@ -359,15 +358,19 @@ export default function ProjectOverviewTab({
                   projectStatus={project.status}
                   teamMembers={teamMembers}
                   cadRevisions={cadRevisions}
+                  activityLogs={activityLogs}
+                  comments={comments}
                   onUpdateFiles={onUpdateFiles}
                 />
-                
-                {(isAdmin || isCad || isEngineer) && (
+
+                {(isAdmin || isEngineer || isClaimedByMe) && (
                   <CADRevisionPanel
                     projectId={project.id}
                     revisions={cadRevisions}
                     userRole={userRole}
                     currentUserId={currentUserId}
+                    isFrozen={project.is_frozen}
+                    bypassActive={project.bypass_active}
                   />
                 )}
               </>

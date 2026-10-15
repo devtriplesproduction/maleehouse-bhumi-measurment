@@ -130,9 +130,9 @@ export function LeadPipeline({ leads }: LeadPipelineProps) {
       const result = await finalizeRequirementsAction(leadId);
       if (result.success) {
         toast.success("Sent to Accounts", {
-          description: "Lead successfully pushed to the Accounts queue."
+          description: "Lead successfully pushed to the Accounts queue for payment milestones."
         });
-        setLocalLeads(prev => prev.map(l => l.id === leadId ? { ...l, status: 'quotation_requested' } : l));
+        setLocalLeads(prev => prev.map(l => l.id === leadId ? { ...l, status: 'payment_pending' } : l));
       } else {
         toast.error("Handover Failed", {
           description: result.error
@@ -208,7 +208,7 @@ export function LeadPipeline({ leads }: LeadPipelineProps) {
           const colLeads = localLeads.filter((l: any) => {
             if (col.id === 'lead_created') return l.status === 'lead_created';
             if (col.id === 'requirement_gathering') return l.status === 'requirement_gathering';
-            if (col.id === 'payment_pending') return ['quotation_requested', 'quotation_sent', 'payment_pending'].includes(l.status);
+            if (col.id === 'payment_pending') return l.status === 'payment_pending';
             return false;
           });
 
@@ -326,19 +326,10 @@ export function LeadPipeline({ leads }: LeadPipelineProps) {
                                 </span>
                               );
                             }
-                            if (lead.status === 'quotation_requested') {
-                              return (
-                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold border bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20">
-                                  <span className="text-[10px] font-semibold mr-0.5 text-blue-550">✓</span>
-                                  Pushed to Accounts
-                                </span>
-                              );
-                            }
-                            // quotation_sent or payment_pending
                             return (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold border bg-emerald-500/10 text-emerald-600 dark:text-emerald-450 border-emerald-500/20">
-                                <span className="text-[10px] font-semibold mr-0.5 text-emerald-500">✓✓</span>
-                                Quotation Sent
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold border bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20">
+                                <span className="text-[10px] font-semibold mr-0.5 text-emerald-500">✓</span>
+                                Payment Pending
                               </span>
                             );
                           })()}

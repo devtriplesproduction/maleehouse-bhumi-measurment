@@ -106,7 +106,7 @@ export default function DashboardNotificationCenter({ className }: { className?:
 
                 if (t.includes('follow-up') || m.includes('follow-up') || t.includes('follow up') || m.includes('follow up')) return 0;
                 if (t.includes('material request') || m.includes('material request')) return 1;
-                if (t.includes('cad prototype submitted') || m.includes('cad prototype submitted') || t.includes('cad prototype uploaded') || m.includes('cad prototype uploaded')) return 2;
+                if (t.includes('draft deliverable submitted') || m.includes('draft deliverable submitted') || t.includes('draft deliverable uploaded') || m.includes('draft deliverable uploaded')) return 2;
                 if (type === 'rejection' || t.includes('qc rejected') || m.includes('qc rejected') || t.includes('qc returned') || m.includes('qc returned')) return 3;
                 if (t.includes('survey data') || m.includes('survey data') || t.includes('raw data') || m.includes('raw data') || t.includes('control point') || m.includes('control point')) return 4;
                 if (t.includes('qc approved') || m.includes('qc approved') || t.includes('passed qc') || m.includes('passed qc') || t.includes('deliverable') || m.includes('deliverable')) return 5;

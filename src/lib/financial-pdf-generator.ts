@@ -144,7 +144,7 @@ export const generateFinancialReportPDF = (
       <tr>
         <td style="border: 1px solid black; padding: 4px;">${i + 1}</td>
         <td style="border: 1px solid black; padding: 4px;">${p.projectId || ''}</td>
-        <td style="border: 1px solid black; padding: 4px;">${p.quotationNo || ''}</td>
+        <td style="border: 1px solid black; padding: 4px;">${p.projectNo || ''}</td>
         <td style="border: 1px solid black; padding: 4px;">${p.projectName || ''}</td>
         <td style="border: 1px solid black; padding: 4px;">${p.contactNo || ''}</td>
         <td style="border: 1px solid black; padding: 4px;">${p.serviceType || ''}</td>
@@ -189,7 +189,7 @@ export const generateFinancialReportPDF = (
             <tr>
               <th>SR NO</th>
               <th>Project ID</th>
-              <th>Quotation No</th>
+              <th>Project Code</th>
               <th>Project/Client Name</th>
               <th>Contact No</th>
               <th>Service Type</th>
@@ -259,11 +259,11 @@ export const generateFinancialReportPDF = (
             - Location: ${project?.client_address || 'Koregaon'}<br/>
             - Service Type: Plot Measurement<br/>
             - Survey Duration: 2 Days<br/>
-            - Quotation Amount: ₹ 8000
+            - Project Amount: ₹ ${project?.budget || 8000}
           </div>
           ${sectionsHtml}
           <table>
-            <tr><td colspan="5" style="text-align: right; font-weight: bold;">Total Quotation Value</td><td style="font-weight: bold;">${reportData.totalQuotationValue || 0}</td></tr>
+            <tr><td colspan="5" style="text-align: right; font-weight: bold;">Total Project Value</td><td style="font-weight: bold;">${reportData.totalQuotationValue || 0}</td></tr>
             <tr><td colspan="5" style="text-align: right; font-weight: bold;">Total Project Costing</td><td style="font-weight: bold;">${reportData.totalProjectCosting || 0}</td></tr>
             <tr><td colspan="5" style="text-align: right; font-weight: bold;">Net Amount</td><td style="font-weight: bold;">${reportData.netAmount || 0}</td></tr>
           </table>
@@ -312,12 +312,11 @@ export const generateFinancialReportPDF = (
             </tr>
             ${rows || `
               <tr>
-                <td rowspan="8">Union Bank</td>
+                <td rowspan="7">Union Bank</td>
                 <td>Survey Engineer Salary</td><td>1</td><td>700</td><td>Freeze</td>
               </tr>
               <tr><td>Driver Salary</td><td>1</td><td>1000</td><td>Freeze</td></tr>
               <tr><td>Helper Salary</td><td>1</td><td>700</td><td>Freeze</td></tr>
-              <tr><td>Cad Engineer Salary</td><td>1</td><td>700</td><td>Freeze</td></tr>
               <tr><td>Designer Payment</td><td></td><td></td><td>Unfreeze</td></tr>
               <tr><td>Accountant</td><td>1</td><td>200</td><td>Freeze</td></tr>
               <tr><td>H.R</td><td>1</td><td>100</td><td>Freeze</td></tr>
@@ -336,14 +335,13 @@ export const generateFinancialReportPDF = (
               <tr><td>Submission Travel</td><td>1</td><td>20</td><td>Freeze</td></tr>
 
               <tr>
-                <td rowspan="7">Karad Urben</td>
+                <td rowspan="6">Karad Urben</td>
                 <td>Equipment Rent (DGPS)</td><td>1</td><td>2000</td><td>Freeze</td>
               </tr>
               <tr><td>Equipment Rent (Drone)</td><td>1</td><td>5000</td><td>Freeze</td></tr>
               <tr><td>Data Processing Cost(DGPS)</td><td>1</td><td>500</td><td>Freeze</td></tr>
               <tr><td>Data Processing Cost(Drone)</td><td>1</td><td>2300</td><td>Freeze</td></tr>
               <tr><td>Computer Cost</td><td>1</td><td>100</td><td>Freeze</td></tr>
-              <tr><td>Auto Cad License</td><td>1</td><td>50</td><td>Freeze</td></tr>
               <tr><td>Stationary</td><td>1</td><td>50</td><td>Unfreeze</td></tr>
               
               <tr>
@@ -427,8 +425,8 @@ export const generateFinancialReportPDF = (
                   <div class="detail-value">${project?.survey_duration || 'N/A'}</div>
                 </div>
                 <div class="detail-item">
-                  <div class="detail-label">Quotation Amount</div>
-                  <div class="detail-value">${project?.quotation_amount ? '₹ ' + project.quotation_amount : '₹ ' + (reportData.total || 0)}</div>
+                  <div class="detail-label">Commercial Budget</div>
+                  <div class="detail-value">${project?.budget ? '₹ ' + project.budget : (project?.quotation_amount ? '₹ ' + project.quotation_amount : '₹ ' + (reportData.total || 0))}</div>
                 </div>
               </div>
             </div>

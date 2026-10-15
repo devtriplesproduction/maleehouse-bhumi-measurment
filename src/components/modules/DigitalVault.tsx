@@ -44,7 +44,7 @@ interface DigitalVaultProps {
 }
 
 // Inner Tab structure
-type VaultTab = 'documents' | 'prototype' | 'field' | 'cad' | 'submission';
+type VaultTab = 'documents' | 'field' | 'submission';
 
 export function DigitalVault({ projectId, files, userRole }: DigitalVaultProps) {
   const router = useRouter();
@@ -71,7 +71,6 @@ export function DigitalVault({ projectId, files, userRole }: DigitalVaultProps) 
   const isAdmin = userRole === 'admin';
   const isEngineer = userRole === 'engineer';
   const isField = userRole === 'field';
-  const isCAD = userRole === 'cad';
   const isSales = userRole === 'sales';
 
   // Role check for uploads
@@ -79,8 +78,6 @@ export function DigitalVault({ projectId, files, userRole }: DigitalVaultProps) 
     if (isAdmin || isEngineer) return true;
     if (tab === 'documents') return isSales;
     if (tab === 'field') return isField;
-    if (tab === 'prototype') return isCAD;
-    if (tab === 'cad') return isCAD;
     return false;
   };
 
@@ -92,13 +89,9 @@ export function DigitalVault({ projectId, files, userRole }: DigitalVaultProps) 
 
       switch (tab) {
         case 'documents':
-          return ['requirements', 'quotation', 'receipt'].includes(f.category);
-        case 'prototype':
-          return ['prototype'].includes(f.category);
+          return ['requirements', 'receipt'].includes(f.category);
         case 'field':
           return ['survey_data', 'control_point_image', 'control_point_csv'].includes(f.category);
-        case 'cad':
-          return ['cad_drawing'].includes(f.category);
         case 'submission':
           return ['final_file'].includes(f.category);
         default:
@@ -242,9 +235,7 @@ export function DigitalVault({ projectId, files, userRole }: DigitalVaultProps) 
       <div className="relative p-1 bg-slate-100 dark:bg-slate-900/60 rounded-2xl flex gap-1 border border-slate-200/50 dark:border-white/5">
         {[
           { id: 'documents', label: 'Project Documents', icon: FileText },
-          { id: 'prototype', label: 'Prototype', icon: Layers },
           { id: 'field', label: 'Field Data', icon: Compass },
-          { id: 'cad', label: 'CAD Drawings', icon: Layers },
           { id: 'submission', label: 'Final Submissions', icon: ShieldCheck },
         ].map((tab) => {
           const Icon = tab.icon;
@@ -464,9 +455,7 @@ export function DigitalVault({ projectId, files, userRole }: DigitalVaultProps) 
                 onChange={(e) => {
                   const catMap: Record<VaultTab, string> = {
                     documents: 'requirements',
-                    prototype: 'prototype',
                     field: 'survey_data',
-                    cad: 'cad_drawing',
                     submission: 'final_file'
                   };
                   handleUpload(e, catMap[activeTab]);
@@ -481,7 +470,7 @@ export function DigitalVault({ projectId, files, userRole }: DigitalVaultProps) 
                    {currentTabFiles.map((file) => {
             // Determine file icon
             const isImage = file.mime_type?.startsWith('image/') || ['control_point_image'].includes(file.category);
-            const isDoc = ['quotation', 'receipt', 'requirements'].includes(file.category);
+            const isDoc = ['receipt', 'requirements'].includes(file.category);
             const Icon = isImage ? ImageIcon : isDoc ? FileText : FileIcon;
             
             return (

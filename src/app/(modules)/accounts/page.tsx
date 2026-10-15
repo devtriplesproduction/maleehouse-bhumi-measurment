@@ -1,12 +1,10 @@
 import React from "react";
 export const dynamic = "force-dynamic";
 import { PageHeader } from "@/components/modules/PageHeader";
-import { ShieldAlert, AlertCircle, FileText, Zap, IndianRupee, Clock, Target } from "lucide-react";
+import { ShieldAlert, AlertCircle, Zap, IndianRupee, Clock, Target, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
-import { getQuotationIntakeQueueAction } from "@/actions/quotation.actions";
 import { createClient } from "@/lib/supabase/server";
 import DashboardNotificationCenter from "@/components/modules/DashboardNotificationCenter";
-import { QuotationIntakeQueue } from "@/features/accounts/QuotationIntakeQueue";
 import { UpcomingMilestonesWidget } from "@/features/accounts/UpcomingMilestonesWidget";
 import { getAllMilestonesAction, getFinancialOverviewAction, getProjectProfitabilityAction } from "@/actions/finance.actions";
 import { ExpenseEntryTrigger } from "@/features/accounts/ExpenseEntryTrigger";
@@ -17,10 +15,7 @@ import { KPICard } from "@/components/modules/KPICard";
 
 export default async function AccountantDashboardPage() {
   const supabase: any = await createClient();
-  // Fetch real database queue & quotations
-  const [intakeRes, quotationsRes, projectsRes, milestonesRes, overviewRes, profitRes, eodRes] = await Promise.all([
-    getQuotationIntakeQueueAction(),
-    supabase.from('quotations').select('id, status, created_at, updated_at, total_amount'),
+  const [projectsRes, milestonesRes, overviewRes, profitRes, eodRes] = await Promise.all([
     supabase.from('projects').select('id, status, created_at, deleted_at').is('deleted_at', null),
     getAllMilestonesAction(),
     getFinancialOverviewAction(),
@@ -28,7 +23,6 @@ export default async function AccountantDashboardPage() {
     getMyEODReportsAction(),
   ]);
 
-  const quotations = quotationsRes.data || [];
   const projects = projectsRes.data || [];
   const milestones = milestonesRes.success ? milestonesRes.data : [];
   
@@ -45,10 +39,8 @@ export default async function AccountantDashboardPage() {
     p.status !== 'Completed' && p.status !== 'Archived' && p.status !== 'cancelled' && p.status !== 'completed'
   ).length;
 
-  const pendingQuoteRequests = intakeRes.success && intakeRes.data ? intakeRes.data.length : 0;
-  
-  const waitingClientApproval = quotations.filter((q: any) =>
-    q.status === 'Sent' || q.status === 'Viewed' || q.status === 'Revision Requested'
+  const completedMilestones = milestones.filter((m: any) => 
+    m.status === 'paid' || m.status === 'completed'
   ).length;
 
   const milestonesPending = milestones.filter((m: any) => 
@@ -60,9 +52,9 @@ export default async function AccountantDashboardPage() {
   const kpis = [
     { label: "Monthly Revenue", value: `₹${(monthlyRevenue / 100000).toFixed(1)}L`, color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/10 border border-emerald-500/20", icon: IndianRupee },
     { label: "Active Projects", value: activeProjects, color: "text-orange-600 dark:text-orange-400", bg: "bg-orange-500/10 border border-orange-500/20", icon: Zap },
-    { label: "Pending Quotes", value: pendingQuoteRequests, color: "text-sky-600 dark:text-sky-400", bg: "bg-sky-500/10 border border-sky-500/20", icon: FileText },
-    { label: "Awaiting Approval", value: waitingClientApproval, color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-500/10 border border-amber-500/20", icon: Clock },
-    { label: "Milestones Pending", value: milestonesPending, color: "text-indigo-600 dark:text-indigo-400", bg: "bg-indigo-500/10 border border-indigo-500/20", icon: Target },
+    { label: "Total Projects", value: projects.length, color: "text-sky-600 dark:text-sky-400", bg: "bg-sky-500/10 border border-sky-500/20", icon: Target },
+    { label: "Milestones Paid", value: completedMilestones, color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/10 border border-emerald-500/20", icon: CheckCircle2 },
+    { label: "Milestones Pending", value: milestonesPending, color: "text-indigo-600 dark:text-indigo-400", bg: "bg-indigo-500/10 border border-indigo-500/20", icon: Clock },
     { label: "Outstanding", value: `₹${(outstandingCollections / 100000).toFixed(1)}L`, color: "text-rose-600 dark:text-rose-400", bg: "bg-rose-500/10 border border-rose-500/20", icon: AlertCircle },
   ];
 
@@ -99,25 +91,6 @@ export default async function AccountantDashboardPage() {
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* Left column for summary grids */}
         <div className="xl:col-span-2 space-y-6">
-
-
-          {/* Recent Quotations Row */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <FileText className="w-5 h-5 text-slate-800 dark:text-white" />
-                <h2 className="text-lg font-bold text-slate-900 dark:text-white">Quotation Intake Queue</h2>
-              </div>
-              <div className="flex items-center gap-3">
-                <Link href="/accounts/intake" className="text-sm text-indigo-600 dark:text-indigo-400 font-bold hover:underline">View All</Link>
-              </div>
-            </div>
-            
-            <div className="max-h-[360px] overflow-y-auto custom-scrollbar pr-2 -mr-2">
-              <QuotationIntakeQueue projects={intakeRes.data || []} hideSearch={true} />
-            </div>
-          </div>
-
           <UpcomingMilestonesWidget milestones={milestones} />
         </div>
 

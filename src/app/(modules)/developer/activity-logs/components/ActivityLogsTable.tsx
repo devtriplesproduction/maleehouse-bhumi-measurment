@@ -24,7 +24,7 @@ export default function ActivityLogsTable({ initialData, totalPages }: { initial
   
   const [selectedLog, setSelectedLog] = useState<AuditLogRecord | null>(null);
 
-  const modules = ['Auth', 'Users', 'Projects', 'Quotations', 'Invoices', 'Payments', 'Expenses', 'Milestones', 'System'];
+  const modules = ['Auth', 'Users', 'Projects', 'Invoices', 'Payments', 'Expenses', 'Milestones', 'System'];
   
   const fetchLogs = async (p: number, s: string, m: string, a: string, t: string) => {
     // We would normally call a server action here to fetch the paginated data.

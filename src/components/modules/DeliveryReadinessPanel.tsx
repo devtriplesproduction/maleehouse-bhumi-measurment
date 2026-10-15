@@ -3,7 +3,7 @@
 import React from "react";
 import {
   CheckCircle2, Lock, Unlock, Package, AlertTriangle,
-  PenTool, MapPin, Shield, FileCheck, Truck
+  MapPin, Shield, FileCheck, Truck
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -13,7 +13,6 @@ interface DeliveryReadinessPanelProps {
   checklist: any;
   userRole: string;
   isFrozen?: boolean;
-  cadRevisions?: any[];
   fieldReports?: any[];
   files?: any[];
   milestones?: any[];
@@ -25,7 +24,6 @@ export function DeliveryReadinessPanel({
   checklist,
   userRole,
   isFrozen = false,
-  cadRevisions = [],
   fieldReports = [],
   files = [],
   milestones = [],
@@ -33,7 +31,7 @@ export function DeliveryReadinessPanel({
 }: DeliveryReadinessPanelProps) {
 
   // Dynamic system evaluation logic
-  const isCADApproved = (cadRevisions || []).some((r: any) => r.status === 'approved');
+  const isSurveyDataVerified = (files || []).some((f: any) => f.category === 'survey_data');
   const isFieldSurveyComplete = (fieldReports || []).some((r: any) => r.report_type === 'completion');
   const isEngineerApproved = ['completed', 'archived'].includes(projectStatus || '');
   const isFilesFinalized = (files || []).some((f: any) => f.category === 'final_file' || f.category === 'survey_data');
@@ -49,7 +47,7 @@ export function DeliveryReadinessPanel({
 
   // Dynamic Blocker Detection Array
   const blockers: string[] = [];
-  if (!isCADApproved) blockers.push("CAD Drawing Approved: Missing approved CAD drawing revision.");
+  if (!isSurveyDataVerified) blockers.push("Survey Data Verified: Missing field survey data upload.");
   if (!isFieldSurveyComplete) blockers.push("Field Survey Complete: Survey completion report is outstanding.");
   if (!isEngineerApproved) blockers.push("Engineer Review Passed: Lead Engineer final sign-off is pending.");
   if (!isFilesFinalized) blockers.push("Files Finalized: Prerequisite deliverables have not been version-locked.");
@@ -59,13 +57,13 @@ export function DeliveryReadinessPanel({
 
   const items = [
     {
-      key: "cad_approved",
-      label: "CAD Drawing Approved",
-      checked: isCADApproved,
-      description: isCADApproved 
-        ? "Revision approved by Engineer." 
-        : "Awaiting approved CAD revision in history.",
-      icon: PenTool,
+      key: "survey_verified",
+      label: "Survey Data Verified",
+      checked: isSurveyDataVerified,
+      description: isSurveyDataVerified 
+        ? "Survey data verified and uploaded to vault." 
+        : "Awaiting field survey data upload.",
+      icon: FileCheck,
       color: "text-blue-500",
       bg: "bg-blue-500/10",
     },

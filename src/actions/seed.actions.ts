@@ -75,8 +75,8 @@ export async function seedTestingAccountsAction() {
         {
           id: "asg-02",
           project_id: "PRJ-5412-8765",
-          user_id: "usr-cad-01",
-          role: "cad",
+          user_id: "usr-field-01",
+          role: "field",
           assigned_at: new Date().toISOString()
         }
       ];

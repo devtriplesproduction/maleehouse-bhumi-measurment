@@ -20,7 +20,6 @@ interface StageDependentLockBannerProps {
   frozenAt: string | null;
   milestones: Milestone[];
   currentStage: string;
-  isQcRejected?: boolean;
   dispatchOverrideRequested?: boolean;
   dispatchOverrideApproved?: boolean;
 }
@@ -32,7 +31,6 @@ export function StageDependentLockBanner({
   frozenAt,
   milestones = [],
   currentStage,
-  isQcRejected = false,
   dispatchOverrideRequested = false,
   dispatchOverrideApproved = false,
 }: StageDependentLockBannerProps) {
@@ -110,23 +108,6 @@ export function StageDependentLockBanner({
           </p>
           <p className="text-xs font-medium text-amber-700 dark:text-amber-300">
             Please verify payment with Accounts to release this stage block and proceed with field/draft hand-offs.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  // 5. QC Rejection Check
-  if (isQcRejected) {
-    return (
-      <div className="p-5 bg-purple-50 dark:bg-purple-500/10 border border-purple-200 dark:border-purple-500/30 rounded-2xl flex items-start gap-4 shadow-sm animate-in slide-in-from-top-2 duration-300">
-        <div className="p-2.5 bg-purple-100 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400 rounded-xl flex-shrink-0">
-          <ShieldAlert className="w-5 h-5" />
-        </div>
-        <div className="space-y-1">
-          <h3 className="text-sm font-bold text-purple-900 dark:text-purple-100 uppercase tracking-wider">QC BLOCKED: REWORK REQUESTED</h3>
-          <p className="text-xs font-medium text-purple-700 dark:text-purple-300">
-            Quality control review has detected defects. Advancing to completion is blocked until drafting and field sync logs are re-submitted.
           </p>
         </div>
       </div>

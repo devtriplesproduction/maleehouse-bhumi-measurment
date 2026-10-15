@@ -35,7 +35,6 @@ const ROLE_THEME: Record<string, { primary: string; hover: string; text: string;
   sales:      { primary: "indigo-600", hover: "hover:text-indigo-600 dark:hover:text-indigo-400", text: "text-indigo-500", bg: "bg-indigo-500/10", border: "border-indigo-500/20", glow: "bg-indigo-600/10" },
   accountant: { primary: "indigo-600", hover: "hover:text-indigo-600 dark:hover:text-indigo-400", text: "text-indigo-500", bg: "bg-indigo-500/10", border: "border-indigo-500/20", glow: "bg-indigo-600/10" },
   engineer:   { primary: "indigo-600", hover: "hover:text-indigo-600 dark:hover:text-indigo-400", text: "text-indigo-500", bg: "bg-indigo-500/10", border: "border-indigo-500/20", glow: "bg-indigo-600/10" },
-  cad:        { primary: "indigo-600", hover: "hover:text-indigo-600 dark:hover:text-indigo-400", text: "text-indigo-500", bg: "bg-indigo-500/10", border: "border-indigo-500/20", glow: "bg-indigo-600/10" },
   field:      { primary: "indigo-600", hover: "hover:text-indigo-600 dark:hover:text-indigo-400", text: "text-indigo-500", bg: "bg-indigo-500/10", border: "border-indigo-500/20", glow: "bg-indigo-600/10" },
 };
 
@@ -44,19 +43,18 @@ const ROLE_REDIRECTS: Record<string, string> = {
   sales: "/sales",
   accountant: "/accounts",
   engineer: "/engineer",
-  cad: "/cad",
   field: "/field",
 };
 
 const getNextRequiredAction = (status: string, files: any[], assignments: any[], activityLogs: any[]) => {
   const isQcRejected = activityLogs.some((l: any) => l.action === "QC_REJECTED") && 
     !activityLogs.some((l: any) => l.action === "QC_APPROVED") && 
-    (status === "data_sync" || status === "prototype" || status === "review");
+    (status === "data_sync" || status === "review");
 
   if (isQcRejected) {
     return {
       title: "QC Rework Request",
-      description: "Address the QC reviewer's rejection notes, coordinate corrections with CAD/Field teams, and re-submit drawings.",
+      description: "Address the QC reviewer's rejection notes, coordinate corrections with the field team, and re-submit.",
       badge: "Returned By QC",
       color: "text-rose-600 bg-rose-500/10 border-rose-500/20 dark:text-rose-450 dark:bg-rose-500/[0.05]"
     };
@@ -65,8 +63,7 @@ const getNextRequiredAction = (status: string, files: any[], assignments: any[],
   switch (status) {
     case 'project_created':
     case 'data_collection':
-      const intakeFiles = files.filter((f: any) => ['requirements', 'quotation', 'receipt', 'intake_document'].includes(f.category));
-      const hasCAD = assignments.some((a: any) => a.role === 'cad');
+      const intakeFiles = files.filter((f: any) => ['requirements', 'receipt', 'intake_document'].includes(f.category));
       
       if (intakeFiles.length === 0) {
         return {
@@ -75,33 +72,19 @@ const getNextRequiredAction = (status: string, files: any[], assignments: any[],
           badge: status === 'project_created' ? "Requires Client Contact" : "Document Collection",
           color: "text-indigo-600 bg-indigo-500/10 border-indigo-500/20 dark:text-indigo-400 dark:bg-indigo-500/[0.05]"
         };
-      } else if (!hasCAD) {
-        return {
-          title: "Assign CAD Specialist",
-          description: "Assign a CAD Specialist from the Operations tab to work on the blueprints.",
-          badge: "Document Collection",
-          color: "text-indigo-600 bg-indigo-500/10 border-indigo-500/20 dark:text-indigo-400 dark:bg-indigo-500/[0.05]"
-        };
       } else {
         return {
-          title: "Transmit to CAD Prototype",
-          description: "Authorize transmission of client documents to the assigned CAD Specialist to start drafting.",
-          badge: "Document Collection",
+          title: "Technical Field Preparation",
+          description: "Review client documents and dispatch field team for survey data collection.",
+          badge: "Ready For Field",
           color: "text-emerald-600 bg-emerald-500/10 border-emerald-500/20 dark:text-emerald-450 dark:bg-emerald-500/[0.05]"
         };
       }
-    case 'prototype':
-      return {
-        title: "CAD Prototype Prep",
-        description: "CAD Specialist is currently preparing the preliminary draft layout and CAD blueprints.",
-        badge: "In Progress",
-        color: "text-blue-600 bg-blue-500/10 border-blue-500/20 dark:text-blue-450 dark:bg-blue-500/[0.05]"
-      };
     case 'review':
       return {
-        title: "Review CAD Deliverables",
-        description: "Examine CAD Prototype drawings, provide feedback, and coordinate DGPS benchmark field work.",
-        badge: "CAD Review Required",
+        title: "Review Project Deliverables",
+        description: "Examine project deliverables, provide feedback, and coordinate field validation.",
+        badge: "Review Required",
         color: "text-orange-600 bg-orange-500/10 border-orange-500/20 dark:text-orange-450 dark:bg-orange-500/[0.05]"
       };
     case 'field_assigned':
@@ -117,21 +100,21 @@ const getNextRequiredAction = (status: string, files: any[], assignments: any[],
         if (hasFinalDoc) {
           return {
             title: "Engineer Final Review",
-            description: "Lead Engineer to approve final CAD deliverable.",
+            description: "Lead Engineer to approve final deliverable.",
             badge: "Engineer Review Required",
             color: "text-purple-600 bg-purple-500/10 border-purple-500/20 dark:text-purple-450 dark:bg-purple-500/[0.05]"
           };
         }
         return {
-          title: "Validate Survey Data & Finalize CAD",
-          description: "CAD Specialist to compare field data and produce final deliverable.",
+          title: "Validate Survey Data & Finalize Deliverables",
+          description: "Compare field data and produce final deliverable package.",
           badge: "In Progress",
           color: "text-cyan-600 bg-cyan-500/10 border-cyan-500/20 dark:text-cyan-450 dark:bg-cyan-500/[0.05]"
         };
     case 'qc_review':
       return {
         title: "Engineer Final Review",
-        description: "Lead Engineer is reviewing final CAD drawings for final approval or rejection.",
+        description: "Lead Engineer is reviewing final package for approval or rejection.",
         badge: "Under Review",
         color: "text-purple-600 bg-purple-500/10 border-purple-500/20 dark:text-purple-450 dark:bg-purple-500/[0.05]"
       };
@@ -223,7 +206,7 @@ async function ProjectContentWrapper({ project, profile, user, role, theme, para
       .from('profiles')
       .select('id, first_name, last_name, email, role, designation, is_active')
       .eq('is_active', true)
-      .in('role', ['admin', 'engineer', 'cad', 'field'])
+      .in('role', ['admin', 'engineer', 'field'])
       .order('first_name'),
     uniqueUserIds.size > 0
       ? supabase
@@ -263,7 +246,7 @@ async function ProjectContentWrapper({ project, profile, user, role, theme, para
   const isOperationsFrozen = project.is_frozen || isStageBlocked;
 
   // Fetch operational data from local DB for technical roles
-  const isOperationalRole = ['admin', 'engineer', 'cad', 'field'].includes(profile?.role || '');
+  const isOperationalRole = ['admin', 'engineer', 'field', 'cad'].includes(profile?.role || '');
   const [cadResult, fieldResult] = isOperationalRole
     ? await Promise.all([
         getCADRevisionsAction(params.id),
@@ -282,9 +265,6 @@ async function ProjectContentWrapper({ project, profile, user, role, theme, para
     role: a.profiles?.role || a.role
   }));
 
-  const isQcRejected = activityLogs.some((l: any) => l.action === "QC_REJECTED") && 
-          !activityLogs.some((l: any) => l.action === "QC_APPROVED");
-
   return (
     <>
       {/* STAGE DEPENDENT DYNAMIC LOCK BANNER */}
@@ -295,7 +275,6 @@ async function ProjectContentWrapper({ project, profile, user, role, theme, para
         frozenAt={project.frozen_at}
         milestones={milestones}
         currentStage={project.status}
-        isQcRejected={isQcRejected}
         dispatchOverrideRequested={project.dispatch_override_requested}
         dispatchOverrideApproved={project.dispatch_override_approved}
       />
@@ -321,10 +300,10 @@ async function ProjectContentWrapper({ project, profile, user, role, theme, para
             activityLogs={activityLogs}
             comments={comments}
             files={files}
+            cadRevisions={cadRevisions}
             teamMembers={teamMembers}
             milestones={milestones}
             allUsers={allUsers}
-            cadRevisions={cadRevisions}
             fieldReports={fieldReports}
             theme={theme}
             serverRenderTime={Date.now()}
@@ -379,12 +358,10 @@ export default async function ProjectDetailPage({ params }: ProjectDetailPagePro
   }
 
   const canArchive = profile?.role === 'admin' || profile?.role === 'accountant';
-  const isSalesAndHandedOver = role === 'sales' && !['lead_created', 'quotation_requested'].includes(project.status);
+  const isSalesAndHandedOver = role === 'sales' && project.status !== 'lead_created';
 
   const statusColors: Record<string, string> = {
     lead_created: "text-indigo-500 bg-indigo-500/10 border-indigo-500/20",
-    quotation_requested: "text-amber-500 bg-amber-500/10 border-amber-500/20",
-    quotation_sent: "text-blue-500 bg-blue-500/10 border-blue-500/20",
     payment_pending: "text-amber-500 bg-amber-500/10 border-amber-500/20",
     payment_done: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20",
     project_created: "text-cyan-500 bg-cyan-500/10 border-cyan-500/20",

@@ -207,42 +207,6 @@ export async function getFieldWorkspaceDataAction(): Promise<WorkspaceResponse<a
   }
 }
 
-// ─── CAD WORKSPACE ─────────────────────────────────────────────────────────────
-
-export async function getCADWorkspaceDataAction(): Promise<WorkspaceResponse<any>> {
-  try {
-    const { unstable_noStore: noStore } = await import('next/cache');
-    noStore();
-    const auth = await requireAuthContext();
-    if (auth.error) return { success: false, error: auth.error };
-
-    const supabase: any = await createClient();
-
-    // CAD: same ops queue as engineer (unassigned dispatches must be visible)
-    const projectsQuery = buildOpsProjectsQuery(supabase, auth.userId!, auth.role!);
-
-    const [projectsRes, sopsRes, eodRes] = await Promise.all([
-      projectsQuery,
-      getSOPsAction(),
-      getMyEODReportsAction()
-    ]);
-
-    if (projectsRes.error) throw projectsRes.error;
-    
-    return {
-      success: true,
-      error: null,
-      data: normalizeData({
-        assignedProjects: enrichOpsProjects(projectsRes.data || [], auth.userId!),
-        sops: sopsRes.success ? sopsRes.data : [],
-        eodReports: eodRes.success ? eodRes.data : []
-      })
-    };
-  } catch (error: any) {
-    return { success: false, error: error.message };
-  }
-}
-
 // ─── REVIEW WORKSPACE ──────────────────────────────────────────────────────────
 
 import { getOperationsQueueAction } from "./operations.actions";
@@ -279,7 +243,6 @@ import { getTotalBankBalanceAction } from "./bank.actions";
 import { getFinancialOverviewAction, getPendingInvoicesCountAction } from "./finance.actions";
 import { getLatestPayrollStatusAction } from "./payroll.actions";
 import { getPendingLeavesCountAction } from "./leave.actions";
-import { getPendingQuotationsCountAction } from "./quotation.actions";
 import { getPendingMaterialRequestsCountAction } from "./field.actions";
 import { getActiveProjectsCountAction, getProjectStatusCountsAction } from "./project.actions";
 import { getAllOverrideRequestsAction } from "./workflow.actions";
@@ -304,7 +267,6 @@ export async function getAdminWorkspaceDataAction(): Promise<WorkspaceResponse<a
       financialResult,
       payrollStatusRes,
       pendingLeavesRes,
-      pendingQuotationsRes,
       pendingInvoicesRes,
       pendingMaterialsRes,
       dispatchOverridesRes,
@@ -319,7 +281,6 @@ export async function getAdminWorkspaceDataAction(): Promise<WorkspaceResponse<a
       getFinancialOverviewAction(),
       getLatestPayrollStatusAction(),
       getPendingLeavesCountAction(),
-      getPendingQuotationsCountAction(),
       getPendingInvoicesCountAction(),
       getPendingMaterialRequestsCountAction(),
       getAllOverrideRequestsAction(),
@@ -390,7 +351,6 @@ export async function getAdminWorkspaceDataAction(): Promise<WorkspaceResponse<a
         financial: financialResult.success ? financialResult.data ?? {} : {},
         payrollStatus: payrollStatusRes.success ? payrollStatusRes.data ?? 'Draft' : 'Draft',
         pendingLeaves: pendingLeavesRes.success ? pendingLeavesRes.data ?? 0 : 0,
-        pendingQuotations: pendingQuotationsRes.success ? pendingQuotationsRes.data ?? 0 : 0,
         pendingInvoices: pendingInvoicesRes.success ? pendingInvoicesRes.data ?? 0 : 0,
         pendingMaterials: pendingMaterialsRes.success ? pendingMaterialsRes.data ?? 0 : 0,
         dispatchOverridesRaw: dispatchRaw,

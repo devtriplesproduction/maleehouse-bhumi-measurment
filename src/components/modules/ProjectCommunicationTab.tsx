@@ -180,7 +180,7 @@ export default function ProjectCommunicationTab({
                 rows={4}
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                placeholder="Log milestone notes, survey queries, or CAD revisions details..."
+                placeholder="Log milestone notes, survey queries, or deliverable details..."
                 className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-3 rounded-xl text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
               />
             </div>

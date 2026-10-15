@@ -156,7 +156,6 @@ export function AddExpenseModal({
                     <option value="Data Processing Cost(Drone)">Data Processing Cost(Drone)</option>
                     <option value="Data Processing Cost (Lidar)">Data Processing Cost (Lidar)</option>
                     <option value="Computer Cost">Computer Cost</option>
-                    <option value="Auto Cad License">Auto Cad License</option>
                     <option value="Printing/Xerox">Printing/Xerox</option>
                     <option value="Stationary">Stationary</option>
                   </select>

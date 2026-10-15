@@ -164,7 +164,6 @@ export function ClientDirectory({ clients, userRole }: ClientDirectoryProps) {
 
   const statusColors: Record<string, string> = {
     lead_created: "text-indigo-500 bg-indigo-500/10 border-indigo-500/20",
-    quotation_sent: "text-blue-500 bg-blue-500/10 border-blue-500/20",
     payment_pending: "text-amber-500 bg-amber-500/10 border-amber-500/20",
     payment_done: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20",
     project_created: "text-cyan-500 bg-cyan-500/10 border-cyan-500/20",

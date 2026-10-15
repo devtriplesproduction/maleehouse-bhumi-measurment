@@ -34,8 +34,8 @@ const getNotificationPriority = (title: string, message: string, type: string) =
   if (t.includes('material request') || m.includes('material request') || t.includes('upcoming') || m.includes('upcoming')) {
     return 0;
   }
-  // 1. CAD Prototype Submitted
-  if (t.includes('cad prototype submitted') || m.includes('cad prototype submitted') || t.includes('cad prototype uploaded') || m.includes('cad prototype uploaded')) {
+  // 1. Draft Deliverable Submitted
+  if (t.includes('draft deliverable submitted') || m.includes('draft deliverable submitted') || t.includes('draft deliverable uploaded') || m.includes('draft deliverable uploaded')) {
     return 1;
   }
   // 2. QC Returned Project

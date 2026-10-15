@@ -65,14 +65,6 @@ const FOLDERS: FolderConfig[] = [
     defaultCategory: 'requirements'
   },
   {
-    id: 'cad_proto',
-    name: 'CAD Prototype',
-    description: 'CAD drafts, preliminary v1 drawings, reference files, and prototype files.',
-    allowedRoles: ['admin', 'cad'],
-    categories: ['prototype', 'cad_drawing'],
-    defaultCategory: 'prototype'
-  },
-  {
     id: 'survey_data',
     name: 'Survey Data',
     description: 'Raw survey coordinates, field logs, site photos, DGPS details, and control point CSVs.',
@@ -101,7 +93,7 @@ const FOLDERS: FolderConfig[] = [
     name: 'Invoices & Receipts',
     description: 'GST professional invoices, fee breakdown sheets, and bank transfer receipts.',
     allowedRoles: ['admin', 'accountant'],
-    categories: ['receipt', 'invoice', 'quotation'],
+    categories: ['receipt', 'invoice'],
     defaultCategory: 'receipt'
   }
 ];
@@ -356,7 +348,7 @@ export default function ProjectDocumentsTab({
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {currentFolderFiles.map((file) => {
                 const isImage = file.mime_type?.startsWith('image/') || ['control_point_image', 'site_photo'].includes(file.category);
-                const isDoc = ['quotation', 'receipt', 'requirements'].includes(file.category);
+                const isDoc = ['receipt', 'requirements'].includes(file.category);
                 const Icon = isImage ? ImageIcon : isDoc ? FileText : FileIcon;
 
                 return (

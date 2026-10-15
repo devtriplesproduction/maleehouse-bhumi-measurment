@@ -48,7 +48,7 @@ export function WorkflowCheckpoints({ projectStatus, teamMembers, files }: Workf
     );
   };
 
-  // 2. Define the 9 ideal checkpoints
+  // 2. Define the ideal checkpoints
   const checkpoints = [
     {
       id: 1,
@@ -68,22 +68,6 @@ export function WorkflowCheckpoints({ projectStatus, teamMembers, files }: Workf
     },
     {
       id: 3,
-      title: 'Creating Prototype',
-      role: 'CAD Engineer',
-      icon: PenTool,
-      description: 'CAD drafting, reference sheets, and v1 blueprints.',
-      statusKey: ['prototype']
-    },
-    {
-      id: 4,
-      title: 'Reviewing Prototype',
-      role: 'Engineer',
-      icon: ShieldCheck,
-      description: 'Prototype validation, corrections, and engineering sign-off.',
-      statusKey: ['prototype']
-    },
-    {
-      id: 5,
       title: 'Field Survey Team Allocation',
       role: 'Field Engineer',
       icon: Users,
@@ -91,7 +75,7 @@ export function WorkflowCheckpoints({ projectStatus, teamMembers, files }: Workf
       statusKey: ['field_work']
     },
     {
-      id: 6,
+      id: 4,
       title: 'Collecting On-field Data',
       role: 'Individual Field Engineer',
       icon: MapPin,
@@ -100,24 +84,24 @@ export function WorkflowCheckpoints({ projectStatus, teamMembers, files }: Workf
       isFieldUploadStep: true
     },
     {
-      id: 7,
-      title: 'Syncing Prototype & On-field Data',
-      role: 'CAD Engineer',
+      id: 5,
+      title: 'Processing Survey Data',
+      role: 'Engineer',
       icon: Layers,
-      description: 'Merge CAD drafts with raw field benchmark details.',
+      description: 'Process raw field coordinates and generate technical deliverables.',
       statusKey: ['data_sync']
     },
     {
-      id: 8,
-      title: 'Checking Final File from CAD Engineer',
+      id: 6,
+      title: 'Deliverables & QC Review',
       role: 'Engineer',
       icon: CheckCircle2,
       description: 'Final blueprint quality check and review clearance.',
       statusKey: ['final_review']
     },
     {
-      id: 9,
-      title: 'Pushing Final File to Design Department',
+      id: 7,
+      title: 'Pushing Final Deliverables',
       role: 'Engineer',
       icon: ShieldCheck,
       description: 'Release finalized project deliverables to client/design.',
@@ -125,29 +109,22 @@ export function WorkflowCheckpoints({ projectStatus, teamMembers, files }: Workf
     }
   ];
 
-  // 3. Map database status to our 9 step numbers
+  // 3. Map database status to step numbers
   const getActiveStepNumber = (): number => {
     switch (projectStatus) {
       case 'project_created':
-        return 2; // Project Start is completed, Gathering data is active
+        return 1;
       case 'data_collection':
         return 2;
-      case 'prototype':
-        // If prototype revision is uploaded/submitted, we are at Step 4, else Step 3
-        const hasPrototype = files.some((f: any) => f.category === 'prototype');
-        return hasPrototype ? 4 : 3; 
-      case 'review':
-        return 4;
       case 'field_work':
-        // If team allocated but data pending, Step 6, else Step 5
-        return fieldEngineers.length > 0 ? 6 : 5;
+        return fieldEngineers.length > 0 ? 4 : 3;
       case 'data_sync':
-        return 7;
+        return 5;
       case 'final_review':
-        return 8;
+        return 6;
       case 'completed':
       case 'archived':
-        return 9;
+        return 7;
       default:
         return 1;
     }
@@ -157,8 +134,6 @@ export function WorkflowCheckpoints({ projectStatus, teamMembers, files }: Workf
     switch (role) {
       case 'Engineer':
         return User;
-      case 'CAD Engineer':
-        return PenTool;
       case 'Field Engineer':
       case 'Individual Field Engineer':
         return MapPin;
@@ -185,7 +160,7 @@ export function WorkflowCheckpoints({ projectStatus, teamMembers, files }: Workf
         
         {/* Dynamic overall progress indicator badge */}
         <div className="self-start sm:self-center px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-200/50 dark:border-white/5 text-xs font-semibold text-slate-600 dark:text-slate-300">
-          Step <span className="text-indigo-600 dark:text-indigo-400 font-bold">{activeStep}</span> of 9
+          Step <span className="text-indigo-600 dark:text-indigo-400 font-bold">{activeStep}</span> of {checkpoints.length}
         </div>
       </div>
 
@@ -247,7 +222,6 @@ export function WorkflowCheckpoints({ projectStatus, teamMembers, files }: Workf
                     <span className={cn(
                       "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wider border self-start sm:self-center",
                       step.role === 'Engineer' && "bg-blue-500/5 text-blue-500 border-blue-500/10",
-                      step.role === 'CAD Engineer' && "bg-purple-500/5 text-purple-500 border-purple-500/10",
                       step.role === 'Field Engineer' && "bg-amber-500/5 text-amber-500 border-amber-500/10",
                       step.role === 'Individual Field Engineer' && "bg-amber-500/5 text-amber-500 border-amber-500/10"
                     )}>
@@ -345,7 +319,6 @@ export function WorkflowCheckpoints({ projectStatus, teamMembers, files }: Workf
                     "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wider border self-start sm:self-center shrink-0",
                     isCompleted 
                       ? (step.role === 'Engineer' && "bg-blue-500/5 text-blue-500 border-blue-500/10") ||
-                        (step.role === 'CAD Engineer' && "bg-purple-500/5 text-purple-500 border-purple-500/10") ||
                         (step.role === 'Field Engineer' && "bg-amber-500/5 text-amber-500 border-amber-500/10") ||
                         (step.role === 'Individual Field Engineer' && "bg-amber-500/5 text-amber-500 border-amber-500/10")
                       : "bg-slate-100 dark:bg-white/5 text-slate-400 dark:text-slate-600 border-slate-200/50 dark:border-white/5"

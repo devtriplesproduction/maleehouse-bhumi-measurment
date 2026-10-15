@@ -29,7 +29,7 @@ export async function uploadFileToServerAction(
     const fileExt = file.name.split('.').pop()?.toLowerCase() || '';
 
     if (!ALLOWED_EXTENSIONS.includes(fileExt)) {
-      return { success: false, error: "Invalid file type. Please upload a supported document, image, CAD, or archive format." };
+      return { success: false, error: "Invalid file type. Please upload a supported document, image, drawing, or archive format." };
     }
 
     if (file.size > MAX_FILE_SIZE) {

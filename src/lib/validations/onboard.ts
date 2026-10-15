@@ -26,7 +26,7 @@ export const onboardSchema = z.object({
 
   // Login & Access (Step 4)
   email: z.string().email("Invalid work email"),
-  role: z.enum(["admin", "sales", "accountant", "engineer", "cad", "field", "hr", "employee"]).default("employee"),
+  role: z.enum(["admin", "sales", "accountant", "engineer", "field", "hr", "employee"]).default("employee"),
   employee_id: z.string().min(4, "Employee ID is required"),
   status: z.enum(["active", "suspended", "onboarding_pending", "resigned", "archived"]).default("onboarding_pending"),
   reporting_manager: z.string().optional(),

@@ -3,7 +3,7 @@ import { getUserProfileAction } from "@/actions/auth.actions";
 import { getEngineerWorkspaceDataAction } from "@/actions/workspace.actions";
 import {
   Shield, FileText,
-  CheckCircle2, Clock, PenTool, MapPin,
+  CheckCircle2, Clock, ClipboardCheck, MapPin,
   Inbox, AlertCircle, FolderKanban, Activity
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -16,6 +16,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { MaterialApprovalWidget } from "@/components/modules/MaterialApprovalWidget";
 import { filterActivityLogsByRole } from "@/lib/utils";
 import { PageHeader } from "@/components/modules/PageHeader";
+import DashboardNotificationCenter from "@/components/modules/DashboardNotificationCenter";
 
 export default async function EngineerDashboardPage() {
   const profile = await getUserProfileAction();
@@ -38,7 +39,7 @@ export default async function EngineerDashboardPage() {
   // Filter project IDs that have had a QC rejection event
   const qcRejectedProjectIds = new Set(
     activityLogs
-      .filter((l: any) => l.action === "QC_REJECTED" || l.action === "ENGINEER_FINAL_CAD_REJECTED")
+      .filter((l: any) => l.action === "QC_REJECTED")
       .map((l: any) => l.project_id)
   );
 
@@ -47,7 +48,7 @@ export default async function EngineerDashboardPage() {
   );
 
   const pendingAcceptance = [...newlyAssigned];
-  const cadReview = projects.filter((p: any) => {
+  const deliverableReview = projects.filter((p: any) => {
     if (p.status === "review") return true;
     if (p.status === "data_sync") {
       const projectLogs = activityLogs.filter((l: any) => l.project_id === p.id);
@@ -104,15 +105,6 @@ export default async function EngineerDashboardPage() {
         case "TEAM_ASSIGNED":
           summary = `Assigned ${log.details?.assigned_role || 'member'} ${log.details?.assigned_user_name || ''}`;
           break;
-        case "CAD_SUBMITTED":
-          summary = "CAD Prototype Uploaded";
-          break;
-        case "CAD_APPROVED":
-          summary = "CAD Prototype Approved";
-          break;
-        case "CAD_REJECTED":
-          summary = "CAD Prototype Rejected";
-          break;
         case "FIELD_VISIT_COMPLETED":
           summary = "Field Survey Completed";
           break;
@@ -121,12 +113,6 @@ export default async function EngineerDashboardPage() {
           break;
         case "QC_APPROVED":
           summary = "QC Approved / Deliverable Approved";
-          break;
-        case "ENGINEER_FINAL_CAD_APPROVED":
-          summary = "Engineer Approved Final CAD Package";
-          break;
-        case "ENGINEER_FINAL_CAD_REJECTED":
-          summary = "Engineer Rejected Final CAD Package";
           break;
         default:
           summary = log.action.replace(/_/g, " ");
@@ -156,8 +142,6 @@ export default async function EngineerDashboardPage() {
       let summary = "";
       if (['requirements', 'intake_document'].includes(f.category)) {
         summary = `Client Documents Added: "${f.file_name}"`;
-      } else if (f.category === 'prototype') {
-        summary = `CAD Blueprint Uploaded: "${f.file_name}"`;
       } else if (f.category === 'final_file') {
         summary = `Deliverable Submitted: "${f.file_name}"`;
       } else {
@@ -182,7 +166,7 @@ export default async function EngineerDashboardPage() {
   // KPIs Row
   const kpis = [
     { label: "New Assignments", value: pendingAcceptance.length, color: "text-indigo-500", bg: "bg-indigo-500/10", icon: Inbox },
-    { label: "CAD Reviews", value: cadReview.length, color: "text-blue-500", bg: "bg-blue-500/10", icon: PenTool },
+    { label: "Deliverable Reviews", value: deliverableReview.length, color: "text-blue-500", bg: "bg-blue-500/10", icon: ClipboardCheck },
     { label: "Activity Feed", value: allTimeline.length, color: "text-amber-500", bg: "bg-amber-500/10", icon: Activity },
     { label: "Active Projects", value: activeProjects.length, color: "text-emerald-500", bg: "bg-emerald-500/10", icon: FolderKanban },
   ];
@@ -190,9 +174,9 @@ export default async function EngineerDashboardPage() {
   // Helper: Get project operational status badge
   const getOperationalBadge = (p: any) => {
     const projectLogs = activityLogs.filter((l: any) => l.project_id === p.id);
-    const isQcRejected = projectLogs.some((l: any) => l.action === "QC_REJECTED" || l.action === "ENGINEER_FINAL_CAD_REJECTED") &&
-      !projectLogs.some((l: any) => l.action === "QC_APPROVED" || l.action === "ENGINEER_FINAL_CAD_APPROVED") &&
-      (p.status === "data_sync" || p.status === "prototype" || p.status === "review");
+    const isQcRejected = projectLogs.some((l: any) => l.action === "QC_REJECTED" || l.action === "ENGINEER_FINAL_DELIVERABLE_REJECTED") &&
+      !projectLogs.some((l: any) => l.action === "QC_APPROVED" || l.action === "ENGINEER_FINAL_DELIVERABLE_APPROVED") &&
+      (p.status === "data_sync" || p.status === "final_review");
 
     if (p.is_frozen || isQcRejected) {
       return { text: "Blocked", color: "text-rose-600 bg-rose-500/10 border-rose-500/20" };
@@ -216,9 +200,9 @@ export default async function EngineerDashboardPage() {
   // Helper: Get project workflow-driven action labels
   const getProjectNextActionLabel = (p: any) => {
     const projectLogs = activityLogs.filter((l: any) => l.project_id === p.id);
-    const isQcRejected = projectLogs.some((l: any) => l.action === "QC_REJECTED" || l.action === "ENGINEER_FINAL_CAD_REJECTED") &&
-      !projectLogs.some((l: any) => l.action === "QC_APPROVED" || l.action === "ENGINEER_FINAL_CAD_APPROVED") &&
-      (p.status === "data_sync" || p.status === "prototype" || p.status === "review");
+    const isQcRejected = projectLogs.some((l: any) => l.action === "QC_REJECTED") &&
+      !projectLogs.some((l: any) => l.action === "QC_APPROVED") &&
+      (p.status === "data_sync" || p.status === "review");
 
     if (isQcRejected) {
       return "Returned for Revision";
@@ -229,10 +213,8 @@ export default async function EngineerDashboardPage() {
         return "Requires Client Contact";
       case 'data_collection':
         return "Document Collection";
-      case 'prototype':
-        return "CAD Prototype Prep";
       case 'review':
-        return "CAD Review Required";
+        return "Deliverable Review Required";
       case 'field_assigned':
       case 'field_work':
         return "Survey In Progress";
@@ -261,7 +243,7 @@ export default async function EngineerDashboardPage() {
   };
 
   const enrichedPending = pendingAcceptance.map(enrichProject);
-  const enrichedCadReview = cadReview.map(enrichProject);
+  const enrichedDeliverableReview = deliverableReview.map(enrichProject);
   const enrichedFieldReviews = fieldReviews.map(enrichProject);
   const enrichedActive = activeProjects.map(enrichProject);
 
@@ -341,13 +323,13 @@ export default async function EngineerDashboardPage() {
                 </TabsTrigger>
 
                 <TabsTrigger
-                  value="cad"
+                  value="reviews"
                   className="px-1 py-2.5 rounded-none border-b-[3px] border-transparent text-sm font-semibold transition-all text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 data-[state=active]:border-indigo-600 data-[state=active]:!text-indigo-600 dark:data-[state=active]:!text-indigo-400 flex items-center gap-2 data-[state=active]:shadow-none bg-transparent hover:bg-transparent data-[state=active]:bg-transparent"
                 >
-                  CAD Reviews
-                  {cadReview.length > 0 && (
+                  Deliverable Reviews
+                  {deliverableReview.length > 0 && (
                     <span className="px-1.5 py-0.2 text-[10px] font-bold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded">
-                      {cadReview.length}
+                      {deliverableReview.length}
                     </span>
                   )}
                 </TabsTrigger>
@@ -396,11 +378,11 @@ export default async function EngineerDashboardPage() {
                 )}
               </TabsContent>
 
-              <TabsContent value="cad" className="mt-0 focus-visible:outline-none">
-                {enrichedCadReview.length === 0 ? (
-                  <EmptyState message="No CAD reviews pending." icon={PenTool} />
+              <TabsContent value="reviews" className="mt-0 focus-visible:outline-none">
+                {enrichedDeliverableReview.length === 0 ? (
+                  <EmptyState message="No deliverable reviews pending." icon={ClipboardCheck} />
                 ) : (
-                  <PaginatedProjectList projects={enrichedCadReview} />
+                  <PaginatedProjectList projects={enrichedDeliverableReview} />
                 )}
               </TabsContent>
 
@@ -423,6 +405,8 @@ export default async function EngineerDashboardPage() {
 
         {/* Right Column (30%) - Action widgets and Recent Activity */}
         <div className="lg:col-span-3 space-y-6 animate-in fade-in duration-300">
+          <DashboardNotificationCenter />
+
           <MaterialApprovalWidget requests={allMaterialRequests} />
 
           <div className="space-y-3">
@@ -454,12 +438,8 @@ export default async function EngineerDashboardPage() {
                       rowBg = 'bg-rose-500/[0.03] dark:bg-rose-500/[0.02] hover:bg-rose-500/[0.06] dark:hover:bg-rose-500/[0.04] border-rose-400/40';
                       nameColor = 'text-rose-600 dark:text-rose-400';
                       Icon = AlertCircle; isImportant = true;
-                    } else if (s.includes('prototype uploaded') || s.includes('blueprint uploaded') || s.includes('cad uploaded')) {
-                      iconBg = 'bg-blue-500/10'; iconText = 'text-blue-500';
-                      rowBg = 'bg-blue-500/[0.03] dark:bg-blue-500/[0.02] hover:bg-blue-500/[0.06] dark:hover:bg-blue-500/[0.04] border-blue-400/40';
-                      nameColor = 'text-blue-600 dark:text-blue-400';
-                      Icon = PenTool; isImportant = true;
-                    } else if (s.includes('quotation') || s.includes('invoice') || s.includes('payment')) {
+
+                    } else if (s.includes('invoice') || s.includes('payment')) {
                       iconBg = 'bg-amber-500/10'; iconText = 'text-amber-500';
                       rowBg = 'bg-amber-500/[0.03] dark:bg-amber-500/[0.02] hover:bg-amber-500/[0.06] dark:hover:bg-amber-500/[0.04] border-amber-400/40';
                       nameColor = 'text-amber-600 dark:text-amber-400';

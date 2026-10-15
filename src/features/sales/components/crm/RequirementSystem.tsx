@@ -130,26 +130,23 @@ export function RequirementSystem({ projectId, projectStatus }: RequirementSyste
 
           <button
             onClick={handlePushToAccounts}
-            disabled={isFinalizing || ['quotation_requested', 'quotation_sent', 'payment_pending'].includes(projectStatus)}
+            disabled={isFinalizing || projectStatus === 'payment_pending'}
             className={cn(
               "w-full py-4 rounded-2xl font-black uppercase tracking-[0.2em] text-xs flex items-center justify-center gap-3 transition-all",
-              !['quotation_requested', 'quotation_sent', 'payment_pending'].includes(projectStatus) && !isFinalizing
+              projectStatus !== 'payment_pending' && !isFinalizing
                 ? "bg-indigo-600 text-white shadow-xl shadow-indigo-500/30 hover:bg-indigo-700 hover:-translate-y-1 active:translate-y-0"
                 : "bg-slate-200 dark:bg-white/5 text-slate-400 cursor-not-allowed border border-white/5"
             )}
           >
             {isFinalizing ? <Loader2 className="w-5 h-5 animate-spin" /> : (
               <>
-                {projectStatus === 'quotation_requested' && 'Awaiting Quote'}
-                {projectStatus === 'quotation_sent' && 'Quote Sent'}
-                {projectStatus === 'payment_pending' && 'Awaiting Payment'}
-                {!['quotation_requested', 'quotation_sent', 'payment_pending'].includes(projectStatus) && 'Send to Accounts'}
+                {projectStatus === 'payment_pending' ? 'Awaiting Payment' : 'Proceed to Payment'}
                 <ArrowRight className="w-4 h-4" />
               </>
             )}
           </button>
 
-          {!isAllChecked && !['quotation_requested', 'quotation_sent', 'payment_pending'].includes(projectStatus) && (
+          {!isAllChecked && projectStatus !== 'payment_pending' && (
             <div className="flex items-center gap-2 text-[10px] font-bold text-amber-600 bg-amber-500/10 px-4 py-2 rounded-xl border border-amber-500/20">
               <AlertTriangle className="w-3.5 h-3.5" />
               Checklist incomplete. Ready for quick handover.

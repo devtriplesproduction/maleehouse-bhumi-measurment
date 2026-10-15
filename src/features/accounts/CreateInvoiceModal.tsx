@@ -76,23 +76,13 @@ export function CreateInvoiceModal({ projectId, projectName, clientName, milesto
         const supabase = createClient();
         const { data, error } = await supabase
           .from('projects')
-          .select('budget, payments(amount, status), quotations(total_amount, status, gst_rate)')
+          .select('budget, payments(amount, status)')
           .eq('id', projectId)
           .single();
         if (data) {
           const project = data as any;
-          let activeBudget = Number(project.budget) || 0;
+          const activeBudget = Number(project.budget) || 0;
           let projectGstRate = 18;
-          if (project.quotations && project.quotations.length > 0) {
-            const approvedQuotation = project.quotations.find((q: any) => q.status?.toLowerCase() === 'approved');
-            if (approvedQuotation) {
-              activeBudget = activeBudget === 0 ? Number(approvedQuotation.total_amount) : activeBudget;
-              if (approvedQuotation.gst_rate !== undefined && approvedQuotation.gst_rate !== null) projectGstRate = Number(approvedQuotation.gst_rate);
-            } else {
-              activeBudget = activeBudget === 0 ? Math.max(...project.quotations.map((q: any) => Number(q.total_amount))) : activeBudget;
-              if (project.quotations[0].gst_rate !== undefined && project.quotations[0].gst_rate !== null) projectGstRate = Number(project.quotations[0].gst_rate);
-            }
-          }
           if (visitId) {
             projectGstRate = 0; // Field visits do not apply GST by default
           }
@@ -111,7 +101,9 @@ export function CreateInvoiceModal({ projectId, projectName, clientName, milesto
         const res = await getBankAccountsAction();
         if (res && res.success && res.data) {
           setBanks(res.data as any[]);
-          const defaultBank = (res.data as any[]).find((b: any) => b.is_default) || (res.data as any[])[0];
+          const projectBankId = (projectData as any)?.requirement_checklist?.bank_account_id;
+          const preferredBank = projectBankId ? (res.data as any[]).find((b: any) => b.id === projectBankId) : null;
+          const defaultBank = preferredBank || (res.data as any[]).find((b: any) => b.is_default) || (res.data as any[])[0];
           if (defaultBank && !formData.bank_id) {
             setFormData(prev => ({ ...prev, bank_id: defaultBank.id }));
           }

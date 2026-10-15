@@ -218,7 +218,7 @@ export function ReportsGenerator() {
       const data = (reportData?.projects || []).map((p: any, idx: number) => ({
         'SR NO': idx + 1,
         'Project ID': p.projectId,
-        'Quotation No': p.quotationNo,
+        'Project Code': p.projectNo || p.quotationNo || '',
         'Project/Client Name': p.projectName,
         'Contact No': p.contactNo,
         'Service Type': p.serviceType,
@@ -611,7 +611,7 @@ export function ReportsGenerator() {
                 <tr className="bg-slate-50/50 dark:bg-white/[0.02] border-b border-slate-200/60 dark:border-border">
                   <th className="py-4 px-4 text-xs font-black uppercase tracking-widest text-slate-400">SR NO</th>
                   <th className="py-4 px-4 text-xs font-black uppercase tracking-widest text-slate-400">Project ID</th>
-                  <th className="py-4 px-4 text-xs font-black uppercase tracking-widest text-slate-400">Quotation No</th>
+                  <th className="py-4 px-4 text-xs font-black uppercase tracking-widest text-slate-400">Project Code</th>
                   <th className="py-4 px-4 text-xs font-black uppercase tracking-widest text-slate-400">Project/Client Name</th>
                   <th className="py-4 px-4 text-xs font-black uppercase tracking-widest text-slate-400">Contact No</th>
                   <th className="py-4 px-4 text-xs font-black uppercase tracking-widest text-slate-400">Service Type</th>
@@ -629,7 +629,7 @@ export function ReportsGenerator() {
                   <tr key={idx} className="border-b border-slate-100 dark:border-border hover:bg-slate-50/50 dark:hover:bg-white/[0.02]">
                     <td className="py-4 px-4 text-sm text-slate-900 dark:text-foreground font-medium">{idx + 1}</td>
                     <td className="py-4 px-4 text-sm text-slate-900 dark:text-foreground">{p.projectId}</td>
-                    <td className="py-4 px-4 text-sm text-slate-900 dark:text-foreground">{p.quotationNo}</td>
+                    <td className="py-4 px-4 text-sm text-slate-900 dark:text-foreground">{p.projectNo || p.quotationNo || '-'}</td>
                     <td className="py-4 px-4 text-sm text-slate-900 dark:text-foreground">{p.projectName}</td>
                     <td className="py-4 px-4 text-sm text-slate-900 dark:text-foreground whitespace-nowrap">{p.contactNo}</td>
                     <td className="py-4 px-4 text-sm text-slate-900 dark:text-foreground">{p.serviceType}</td>
@@ -688,7 +688,7 @@ export function ReportsGenerator() {
                   </React.Fragment>
                 ))}
                 <tr className="border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-white/[0.02]">
-                  <td colSpan={5} className="py-3 px-4 text-sm font-bold text-right text-slate-900 dark:text-foreground">Total Quotation Value</td>
+                  <td colSpan={5} className="py-3 px-4 text-sm font-bold text-right text-slate-900 dark:text-foreground">Total Project Value</td>
                   <td className="py-3 px-4 text-sm font-bold tabular-nums text-right text-slate-900 dark:text-foreground">{reportData.totalQuotationValue || 0}</td>
                 </tr>
                 <tr className="border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-white/[0.02]">

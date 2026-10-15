@@ -19,14 +19,6 @@ export type AuditLogAction =
   | 'PROJECT_DELETED'
   | 'PROJECT_STATUS_CHANGED'
 
-  // Quotations
-  | 'QUOTATION_CREATED'
-  | 'QUOTATION_UPDATED'
-  | 'QUOTATION_DELETED'
-  | 'QUOTATION_SENT'
-  | 'QUOTATION_APPROVED'
-  | 'QUOTATION_REJECTED'
-
   // Invoices
   | 'INVOICE_CREATED'
   | 'INVOICE_UPDATED'
@@ -63,7 +55,6 @@ export type AuditLogModule =
   | 'Auth'
   | 'Users'
   | 'Projects'
-  | 'Quotations'
   | 'Invoices'
   | 'Payments'
   | 'Expenses'

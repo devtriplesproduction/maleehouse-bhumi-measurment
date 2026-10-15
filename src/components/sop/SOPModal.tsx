@@ -34,7 +34,6 @@ const ROLES = [
   { label: 'Sales', value: 'sales' },
   { label: 'Accountant', value: 'accountant' },
   { label: 'Engineer', value: 'engineer' },
-  { label: 'CAD', value: 'cad' },
   { label: 'Field', value: 'field' },
 ];
 

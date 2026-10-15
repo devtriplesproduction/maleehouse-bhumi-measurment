@@ -1,6 +1,5 @@
 import React from 'react';
 import { renderToString } from 'react-dom/server';
-import { QuotationDocument } from '@/features/accounts/QuotationDocument';
 import { toast } from '@/hooks/use-toast';
 
 interface ProjectReportData {
@@ -222,116 +221,6 @@ export const generateProjectReport = (data: ProjectReportData) => {
   printWindow.document.close();
 };
 
-import { getBankAccountsAction } from '@/actions/bank.actions';
-
-export const generateQuotationPDF = async (quotation: any, project: any, companySettings: any, bankDetails?: any) => {
-  const printWindow = window.open('', '_blank');
-  if (!printWindow) {
-    toast({
-      title: 'Popup Blocked',
-      description: 'Please allow popups to preview/print the quotation.',
-      variant: 'error'
-    });
-    return;
-  }
-
-  let bank = bankDetails;
-  if (!bank && quotation.bank_id) {
-    try {
-      const res = await getBankAccountsAction();
-      if (res && res.success && res.data) {
-        bank = res.data.find((b: any) => b.id === quotation.bank_id);
-      }
-    } catch (e) {
-      console.error("Failed to fetch bank details for PDF", e);
-    }
-  }
-
-  const html = renderToString(<QuotationDocument quotation={quotation} project={project} companySettings={companySettings} bank={bank} />);
-  
-  const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
-    .map(el => el.outerHTML)
-    .join('\n');
-
-  printWindow.document.open();
-  printWindow.document.write(`
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <title>Quotation ${quotation.quotation_number}</title>
-        ${styles}
-        <style>
-          @media print {
-            body { 
-              print-color-adjust: exact; 
-              -webkit-print-color-adjust: exact;
-              margin: 0 !important;
-              padding: 0 !important;
-              background-color: white !important;
-            }
-            @page {
-              size: A4;
-              margin: 0;
-            }
-            .pdf-container {
-              width: 210mm;
-              margin: 0 auto;
-            }
-            .pdf-page {
-              width: 210mm;
-              min-height: 297mm !important;
-              height: 297mm !important;
-              margin: 0 !important;
-              padding: 20mm !important;
-              box-shadow: none !important;
-              border: none !important;
-              border-radius: 0 !important;
-              page-break-after: always;
-              page-break-inside: avoid;
-              position: relative;
-              overflow: hidden;
-            }
-            .pdf-page:last-child {
-              page-break-after: auto;
-            }
-            ::-webkit-scrollbar { display: none; }
-          }
-          
-          body {
-            background-color: #f1f5f9;
-            display: flex;
-            justify-content: center;
-            padding: 2rem 0;
-          }
-          .pdf-page {
-            box-sizing: border-box;
-          }
-        </style>
-      </head>
-      <body>
-        ${html}
-        <script>
-          function doPrint() {
-            window.focus();
-            window.print();
-            window.close();
-          }
-          if (document.fonts && document.fonts.ready) {
-            document.fonts.ready.then(function() {
-              setTimeout(doPrint, 500);
-            });
-          } else {
-            window.onload = function() {
-              setTimeout(doPrint, 800);
-            };
-          }
-        </script>
-      </body>
-    </html>
-  `);
-  printWindow.document.close();
-};
-
 export const generateInvoicePDF = (invoice: any, project: any, companySettings: any, bankDetails?: any) => {
   const printWindow = window.open("", "_blank");
   if (!printWindow) {
@@ -350,18 +239,8 @@ export const generateInvoicePDF = (invoice: any, project: any, companySettings: 
   const totalAmount = Number(invoice.total_amount);
   const remainingAmount = Math.max(0, totalAmount - amountPaid);
 
-  let projectBudget = Number(project?.budget) || 0;
-  if (projectBudget === 0 && project?.quotations && project.quotations.length > 0) {
-    const approvedQuotation = project.quotations.find((q: any) => q.status?.toLowerCase() === 'approved');
-    if (approvedQuotation) {
-      projectBudget = Number(approvedQuotation.total_amount);
-    } else {
-      projectBudget = Math.max(...project.quotations.map((q: any) => Number(q.total_amount)));
-    }
-  }
-  
-  // Extract GST type from the active quotation (assuming the first one or the one with client_details)
-  const gstType = project?.quotations?.[0]?.client_details?.gst_type || 'CGST_SGST';
+  const projectBudget = Number(project?.budget) || 0;
+  const gstType: string = 'CGST_SGST';
   const projectPayments = project?.payments || [];
   const projectVerifiedPayments = projectPayments.filter((p: any) => p.status === 'verified' || p.status === 'paid');
   let projectAmountPaid = projectVerifiedPayments.reduce((sum: number, p: any) => sum + Number(p.amount), 0);

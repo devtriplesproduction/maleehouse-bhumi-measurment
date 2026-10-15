@@ -34,17 +34,6 @@ export function AccountsSidebar() {
     { title: "Dashboard", href: "/accounts", icon: Home },
 
     {
-      title: "Quotations",
-      icon: FileText,
-      subLinks: [
-        { title: "Quote Intake", href: "/accounts/intake", icon: Inbox },
-        { title: "Draft Quotations", href: "/accounts/quotations", icon: FileEdit },
-        { title: "Client Approvals", href: "/accounts/approvals", icon: CheckCircle2 },
-        { title: "T&C Templates", href: "/accounts/templates", icon: Scroll },
-      ]
-    },
-
-    {
       title: "Projects",
       icon: FolderKanban,
       subLinks: [

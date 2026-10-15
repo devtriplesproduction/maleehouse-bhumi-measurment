@@ -20,7 +20,7 @@ export function FileUploader({ projectId, open, onOpenChange }: FileUploaderProp
   const router = useRouter();
   const { toast } = useToast();
   const [file, setFile] = useState<File | null>(null);
-  const [category, setCategory] = useState<'quotation' | 'receipt' | 'requirements' | 'prototype' | 'survey_data' | 'final_file'>('requirements');
+  const [category, setCategory] = useState<'receipt' | 'requirements' | 'survey_data' | 'final_file'>('requirements');
   const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle');
@@ -122,9 +122,7 @@ export function FileUploader({ projectId, open, onOpenChange }: FileUploaderProp
               disabled={isUploading}
             >
               <option value="requirements">Project Requirements</option>
-              <option value="quotation">Quotation</option>
               <option value="survey_data">Survey Data</option>
-              <option value="prototype">Prototype</option>
               <option value="receipt">Receipt</option>
               <option value="final_file">Final Deliverable</option>
             </select>

@@ -39,7 +39,6 @@ const EXPENSE_CATEGORIES = [
   "Data Processing Cost(Drone)",
   "Data Processing Cost (Lidar)",
   "Computer Cost",
-  "Auto Cad License",
   "Printing/Xerox",
   "Stationary"
 ];

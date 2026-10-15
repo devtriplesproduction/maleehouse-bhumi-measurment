@@ -160,14 +160,7 @@ export async function deleteBankAccountAction(id: string) {
       .eq("bank_id", id);
     if (reconError) throw reconError;
 
-    // 5. Check for quotations
-    const { count: quoteCount, error: quoteError } = await (supabase as any)
-      .from("quotations")
-      .select("id", { count: "exact", head: true })
-      .eq("bank_id", id);
-    if (quoteError) throw quoteError;
-
-    // 6. Check for invoices
+    // 5. Check for invoices
     const { count: invoiceCount, error: invoiceError } = await (supabase as any)
       .from("invoices")
       .select("id", { count: "exact", head: true })
@@ -179,7 +172,6 @@ export async function deleteBankAccountAction(id: string) {
       (expenseCount || 0) > 0 ||
       (payrollCount || 0) > 0 ||
       (reconCount || 0) > 0 ||
-      (quoteCount || 0) > 0 ||
       (invoiceCount || 0) > 0
     ) {
       return {

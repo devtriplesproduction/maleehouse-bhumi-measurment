@@ -20,7 +20,6 @@ interface WorkflowStepperProps {
 
 const STAGES = [
   { id: 'lead_created', label: 'Lead' },
-  { id: 'quotation_sent', label: 'Quotation' },
   { id: 'payment_pending', label: 'Payment' },
   { id: 'ready_for_dispatch', label: 'Ready' },
   { id: 'project_created', label: 'Assigned' },
@@ -32,7 +31,8 @@ const STAGES = [
 
 export function WorkflowStepper({ projectId, currentStatus, userRole }: WorkflowStepperProps) {
   const [isPending, startTransition] = useTransition();
-  const currentIndex = STAGES.findIndex(s => s.id === currentStatus);
+  const effectiveStatus = currentStatus;
+  const currentIndex = STAGES.findIndex(s => s.id === effectiveStatus);
   const nextStage = STAGES[currentIndex + 1];
 
   // Permission logic matching server action matrix
@@ -41,10 +41,9 @@ export function WorkflowStepper({ projectId, currentStatus, userRole }: Workflow
     if (userRole === 'admin') return true;
     
     const permissionMatrix: Record<string, string[]> = {
-      'sales': ['lead_created', 'quotation_sent', 'payment_pending'],
+      'sales': ['lead_created', 'payment_pending'],
       'accountant': ['payment_done', 'ready_for_dispatch', 'project_created'],
-      'engineer': ['data_collection', 'prototype', 'field_work', 'data_sync'],
-      'cad': ['prototype'],
+      'engineer': ['data_collection', 'field_work', 'data_sync', 'final_review'],
       'field': ['field_work', 'data_sync'],
     };
 

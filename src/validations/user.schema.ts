@@ -12,7 +12,7 @@ export const profileSchema = z.object({
   email: z.string().email(),
   first_name: z.string().min(1, "First name is required"),
   last_name: z.string().min(1, "Last name is required"),
-  role: z.enum(["admin", "sales", "accountant", "engineer", "cad", "field", "hr", "employee"]),
+  role: z.enum(["admin", "sales", "accountant", "engineer", "field", "hr", "employee"]),
   is_active: z.boolean().default(true),
 });
 

@@ -1,9 +1,7 @@
 'use client';
 
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { autoGenerateMilestoneInvoicesAction, getInvoiceByIdAction } from '@/actions/finance.actions';
-import { useCompanySettings } from '@/providers/CompanySettingsProvider';
 import {
   Building2,
   Clock,
@@ -15,8 +13,6 @@ import {
 import { format, differenceInDays } from 'date-fns';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
-import { CreateInvoiceModal } from './CreateInvoiceModal';
-import { InvoicePreviewModal } from './InvoicePreviewModal';
 
 export interface Milestone {
   id: string;
@@ -27,7 +23,7 @@ export interface Milestone {
   due_date: string | null;
   linked_stage?: string | null;
   is_activation_gate: boolean;
-  status: 'pending' | 'paid' | 'hold';
+  status: 'pending' | 'paid' | 'hold' | 'payment_verification_pending';
   updated_at: string;
   projects?: {
     name: string;
@@ -35,14 +31,6 @@ export interface Milestone {
     status: string;
     is_frozen: boolean;
   } | null;
-  invoices?: {
-    id: string;
-    status: string;
-    created_at: string;
-    amount: number;
-    due_date: string | null;
-    payments?: { status: string }[];
-  }[];
 }
 
 interface UpcomingMilestonesWidgetProps {
@@ -58,62 +46,13 @@ const formatCurrency = (amount: number) => {
 };
 
 export function UpcomingMilestonesWidget({ milestones }: UpcomingMilestonesWidgetProps) {
-  const getActiveInvoice = (m: Milestone) => {
-    if (!m.invoices || m.invoices.length === 0) return null;
-    return m.invoices.find((inv: any) => 
-      Number(inv.amount) === Number(m.amount) && 
-      inv.due_date === m.due_date && 
-      inv.status !== 'cancelled' && 
-      inv.status !== 'rejected'
-    ) || null;
-  };
-
   const router = useRouter();
-  const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
-  const [selectedMilestone, setSelectedMilestone] = useState<Milestone | null>(null);
-  const [previewInvoice, setPreviewInvoice] = useState<any | null>(null);
-  const { settings: companySettings } = useCompanySettings();
-
-  const handleInvoiceClick = async (invoiceId: string) => {
-    const res = await getInvoiceByIdAction(invoiceId);
-    if (res.success && res.data) {
-      setPreviewInvoice(res.data);
-    }
-  };
-
-  useEffect(() => {
-    const needsGeneration = milestones.some(m => {
-      if (m.status === 'paid') return false;
-      if (getActiveInvoice(m)) return false;
-      if (!m.due_date) return false;
-      
-      const date = new Date(m.due_date);
-      const days = differenceInDays(date, new Date());
-      return days <= 5;
-    });
-
-    if (needsGeneration) {
-      autoGenerateMilestoneInvoicesAction().then((res) => {
-        if (res?.success && res.data?.generated > 0) {
-          // revalidatePath in Server Action automatically updates Server Components
-        }
-      }).catch(err => {
-        console.error("autoGenerateMilestoneInvoicesAction failed:", err);
-      });
-    }
-  }, [milestones, router]);
 
   // Filter for unpaid milestones and sort by due date ascending
   const upcomingMilestones = useMemo(() => {
     return milestones
       .filter((m) => m.status !== 'paid')
       .sort((a: any, b: any) => {
-        const aHasInvoice = !!getActiveInvoice(a);
-        const bHasInvoice = !!getActiveInvoice(b);
-        
-        if (aHasInvoice && !bHasInvoice) return -1;
-        if (!aHasInvoice && bHasInvoice) return 1;
-
         if (a.due_date && !b.due_date) return -1;
         if (!a.due_date && b.due_date) return 1;
         if (a.due_date && b.due_date) {
@@ -182,8 +121,6 @@ export function UpcomingMilestonesWidget({ milestones }: UpcomingMilestonesWidge
             const dueStatus = getDueStatus(m.due_date);
             const isProjectFrozen = m.projects?.is_frozen || m.projects?.status === 'on_hold';
             const isOverdue = m.due_date && differenceInDays(new Date(m.due_date), new Date()) < 0;
-            const activeInvoice = getActiveInvoice(m);
-            const hasInvoice = !!activeInvoice;
 
             const cardClasses = cn(
               'bg-white dark:bg-[#0f121b] border rounded-2xl p-4 transition-all duration-300 flex items-center justify-between group hover:shadow-md hover:border-slate-300 dark:hover:border-white/10 cursor-pointer',
@@ -194,8 +131,12 @@ export function UpcomingMilestonesWidget({ milestones }: UpcomingMilestonesWidge
                 : 'border-slate-200/60 dark:border-white/5'
             );
 
-            const cardContent = (
-              <>
+            return (
+              <div
+                key={m.id}
+                onClick={() => router.push('/accounts/billing')}
+                className={cardClasses}
+              >
                 {/* Left: Icon + Info */}
                 <div className="flex items-start gap-3 flex-1 min-w-0">
                   <div className={cn(
@@ -215,7 +156,7 @@ export function UpcomingMilestonesWidget({ milestones }: UpcomingMilestonesWidge
                   
                   <div className="min-w-0 space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                       <span className="text-sm font-semibold text-slate-900 dark:text-white truncate">
+                      <span className="text-sm font-semibold text-slate-900 dark:text-white truncate">
                         {m.projects?.name || 'Standalone Assignment'}
                       </span>
                       {m.is_activation_gate && (
@@ -226,6 +167,11 @@ export function UpcomingMilestonesWidget({ milestones }: UpcomingMilestonesWidge
                       {m.status === 'hold' && (
                         <span className="text-[9px] font-bold bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-100/50 dark:border-rose-500/20 px-1.5 py-0.5 rounded uppercase tracking-wider">
                           On Hold
+                        </span>
+                      )}
+                      {m.status === 'payment_verification_pending' && (
+                        <span className="text-[9px] font-bold bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-100/50 dark:border-amber-500/20 px-1.5 py-0.5 rounded uppercase tracking-wider">
+                          Verification Pending
                         </span>
                       )}
                     </div>
@@ -248,17 +194,9 @@ export function UpcomingMilestonesWidget({ milestones }: UpcomingMilestonesWidge
                   <div className="text-right">
                     <p className="text-sm font-bold text-slate-900 dark:text-white nums flex items-center justify-end gap-1.5">
                       {formatCurrency(m.amount)}
-                      {hasInvoice && activeInvoice ? (
-                        activeInvoice.status === 'sent' ? (
-                          <span className="text-[8px] leading-none py-0.5 px-1 bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-sm uppercase tracking-widest font-extrabold" title="Invoice sent to client">SENT</span>
-                        ) : activeInvoice.status === 'paid' ? (
-                          <span className="text-[8px] leading-none py-0.5 px-1 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-sm uppercase tracking-widest font-extrabold" title="Invoice paid">PAID</span>
-                        ) : (
-                          <span className="text-[8px] leading-none py-0.5 px-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-sm uppercase tracking-widest font-extrabold" title="Invoice generated and ready to send">READY</span>
-                        )
-                      ) : (
-                        <span className="text-[8px] leading-none py-0.5 px-1 bg-slate-100 dark:bg-white/5 text-slate-400 rounded-sm uppercase tracking-widest font-bold" title="Invoice pending generation">PENDING</span>
-                      )}
+                      <span className="text-[8px] leading-none py-0.5 px-1 bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-400 rounded-sm uppercase tracking-widest font-bold">
+                        {m.status === 'payment_verification_pending' ? 'VERIFY' : 'PAYMENT DUE'}
+                      </span>
                     </p>
                     <p className={cn('text-[10px] mt-0.5', dueStatus.className)}>
                       {dueStatus.text}
@@ -271,60 +209,10 @@ export function UpcomingMilestonesWidget({ milestones }: UpcomingMilestonesWidge
                     <ArrowRight className="w-4 h-4" />
                   </div>
                 </div>
-              </>
-            );
-
-            if (hasInvoice) {
-              return (
-                <div
-                  key={m.id}
-                  onClick={() => activeInvoice && handleInvoiceClick(activeInvoice.id)}
-                  className={cardClasses}
-                >
-                  {cardContent}
-                </div>
-              );
-            }
-
-            return (
-              <div
-                key={m.id}
-                onClick={() => {
-                  setSelectedMilestone(m);
-                  setInvoiceModalOpen(true);
-                }}
-                className={cardClasses}
-              >
-                {cardContent}
               </div>
             );
           })}
         </div>
-      )}
-      {selectedMilestone && (
-        <CreateInvoiceModal
-          isOpen={invoiceModalOpen}
-          onOpenChange={setInvoiceModalOpen}
-          projectId={selectedMilestone.project_id}
-          projectName={selectedMilestone.projects?.name || 'Unknown Project'}
-          clientName={selectedMilestone.projects?.client_name || 'Unknown Client'}
-          milestoneId={selectedMilestone.id}
-          milestoneTitle={selectedMilestone.title}
-          initialAmount={selectedMilestone.amount}
-          onSuccess={() => {
-            // Ideally we'd trigger a refresh here, but the user can click the refresh button manually
-          }}
-        />
-      )}
-      {previewInvoice && (
-        <InvoicePreviewModal
-          invoice={previewInvoice}
-          companySettings={companySettings}
-          onClose={() => setPreviewInvoice(null)}
-          onRefresh={() => {
-            // Parent state or Server Action revalidatePath will handle refresh
-          }}
-        />
       )}
     </div>
   );

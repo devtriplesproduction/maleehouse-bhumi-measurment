@@ -184,9 +184,9 @@ export function SalesProjectPortal({ project, comments = [], files = [] }: Sales
       const result = await finalizeRequirementsAction(project.id);
       if (result.success) {
         toast.success("Handed over to Accounts", { 
-          description: "Project is now in Accounts queue for quotation formulation." 
+          description: "Project is now in Accounts queue for payment milestone verification." 
         });
-        setLocalProject((prev: any) => ({ ...prev, status: 'quotation_requested' }));
+        setLocalProject((prev: any) => ({ ...prev, status: 'payment_pending' }));
       } else {
         toast.error("Workflow Error", { description: result.error });
       }
@@ -263,7 +263,7 @@ export function SalesProjectPortal({ project, comments = [], files = [] }: Sales
   };
 
   const isLead = ['lead_created', 'requirement_gathering', 'follow_up_pending'].includes(localProject.status);
-  const isPushed = localProject.status === 'quotation_requested';
+  const isPushed = localProject.status === 'payment_pending';
   const isQuoteFormulated = !isLead && !isPushed && localProject.status !== 'archived';
 
   return (
@@ -351,7 +351,7 @@ export function SalesProjectPortal({ project, comments = [], files = [] }: Sales
             <p className="text-sm font-semibold text-slate-800 dark:text-white leading-none">
               {isLead ? "Accounts Handoff Pending" :
                isPushed ? "Submitted to Accounts" :
-               "Quotation Completed"}
+               "Commercials Active"}
             </p>
             <p className="text-xs text-slate-400 dark:text-slate-500 font-medium mt-0.5">
               {isLead ? "Staging Phase" : isPushed ? "Finance Review" : "Active Project"}
@@ -374,12 +374,12 @@ export function SalesProjectPortal({ project, comments = [], files = [] }: Sales
           )}
           {isPushed && (
             <span className="text-xs font-semibold px-3 py-1 bg-amber-500/10 text-amber-600 rounded-lg border border-amber-500/20">
-              Awaiting Quotation
+              Awaiting Payment
             </span>
           )}
           {isQuoteFormulated && (
             <span className="text-xs font-semibold px-3 py-1 bg-emerald-500/10 text-emerald-600 rounded-lg border border-emerald-500/20">
-              Active & Quoted
+              Active Project
             </span>
           )}
         </div>

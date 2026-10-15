@@ -11,7 +11,6 @@ import { cn } from '@/lib/utils';
 const STAGE_CONFIG: Record<string, { label: string; color: string; bg: string; dot: string }> = {
   project_created:  { label: "Created",        color: "text-slate-400",   bg: "bg-slate-500/10",   dot: "bg-slate-400" },
   data_collection:  { label: "Data Collection", color: "text-sky-500",     bg: "bg-sky-500/10",     dot: "bg-sky-500" },
-  prototype:        { label: "CAD Prototype",   color: "text-blue-500",    bg: "bg-blue-500/10",    dot: "bg-blue-500" },
   field_work:       { label: "Field Survey",    color: "text-emerald-500", bg: "bg-emerald-500/10", dot: "bg-emerald-500" },
   data_sync:        { label: "Data Sync",       color: "text-cyan-500",    bg: "bg-cyan-500/10",    dot: "bg-cyan-500" },
   review:           { label: "QC Review",       color: "text-purple-500",  bg: "bg-purple-500/10",  dot: "bg-purple-500" },
@@ -21,7 +20,6 @@ const STAGE_CONFIG: Record<string, { label: string; color: string; bg: string; d
 
 const ROLE_COLOR: Record<string, string> = {
   engineer: "bg-amber-500",
-  cad:      "bg-blue-500",
   field:    "bg-emerald-500",
   employee: "bg-slate-500",
 };
@@ -142,7 +140,7 @@ interface OperationsDashboardClientProps {
 export function OperationsDashboardClient({ queue, firstName, role }: OperationsDashboardClientProps) {
 
   const totalActive = queue?.all?.length || 0;
-  const cadQueue = queue?.active?.filter((p: any) => p.status === "prototype") || [];
+  const deliverablesQueue = queue?.active?.filter((p: any) => p.status === "final_review") || [];
   const fieldQueue = queue?.field || [];
   const reviewQueue = queue?.review || [];
 
@@ -155,9 +153,9 @@ export function OperationsDashboardClient({ queue, firstName, role }: Operations
       bg: "bg-indigo-500/10",
     },
     {
-      label: "CAD Queue",
-      value: cadQueue.length,
-      icon: PenTool,
+      label: "Deliverables",
+      value: deliverablesQueue.length,
+      icon: Package,
       color: "text-blue-500",
       bg: "bg-blue-500/10",
     },

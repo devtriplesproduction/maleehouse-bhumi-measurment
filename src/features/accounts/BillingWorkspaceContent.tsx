@@ -1,31 +1,30 @@
 "use client";
 
 import React, { useState } from "react";
-import { InvoiceTable } from "@/features/accounts/InvoiceTable";
 import { MilestonePaymentsTable } from "@/features/accounts/MilestonePaymentsTable";
 import { PaymentReceiptsTable } from "@/features/accounts/PaymentReceiptsTable";
 import { ProjectBillingTable, ProjectBillingSummary } from "@/features/accounts/ProjectBillingTable";
 import { ExpenseEntryTrigger } from "@/features/accounts/ExpenseEntryTrigger";
-import { Target, FileText, RefreshCw, Search, Receipt, Briefcase, Wallet } from "lucide-react";
+import { Target, RefreshCw, Search, Receipt, Briefcase, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/modules/PageHeader";
 
 interface BillingWorkspaceContentProps {
-  initialInvoices: any[];
+  initialInvoices?: any[];
   initialMilestones: any[];
   initialProjectsData: ProjectBillingSummary[];
   initialPayments?: any[];
 }
 
 export function BillingWorkspaceContent({
-  initialInvoices,
+  initialInvoices = [],
   initialMilestones,
   initialProjectsData,
   initialPayments = []
 }: BillingWorkspaceContentProps) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"projects" | "milestones" | "invoices" | "receipts">("projects");
+  const [activeTab, setActiveTab] = useState<"projects" | "milestones" | "receipts">("projects");
   const [searchQuery, setSearchQuery] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -40,7 +39,7 @@ export function BillingWorkspaceContent({
       {/* Header */}
       <PageHeader
         title="Billing & Collections"
-        subtitle="Manage client invoices and track receivables."
+        subtitle="Manage client payments, milestones, and receipts."
         icon={Wallet}
         actions={
           <>
@@ -97,18 +96,6 @@ export function BillingWorkspaceContent({
           Milestone Payments ({initialMilestones.filter((m: any) => m.status !== 'paid').length})
         </button>
         <button
-          onClick={() => setActiveTab("invoices")}
-          className={cn(
-            "px-4 py-2 text-[11px] font-bold rounded-lg transition-all uppercase tracking-wider flex items-center gap-2",
-            activeTab === "invoices"
-              ? "bg-white dark:bg-white/10 text-indigo-600 dark:text-white shadow-sm"
-              : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-          )}
-        >
-          <FileText className="w-3.5 h-3.5" />
-          Invoices Ledger ({initialInvoices.length})
-        </button>
-        <button
           onClick={() => setActiveTab("receipts")}
           className={cn(
             "px-4 py-2 text-[11px] font-bold rounded-lg transition-all uppercase tracking-wider flex items-center gap-2",
@@ -137,13 +124,6 @@ export function BillingWorkspaceContent({
               milestones={initialMilestones} 
               onRefresh={handleRefresh} 
               searchQuery={searchQuery}
-            />
-          )}
-          {activeTab === "invoices" && (
-            <InvoiceTable 
-              invoices={initialInvoices} 
-              searchQuery={searchQuery}
-              onRefresh={handleRefresh}
             />
           )}
           {activeTab === "receipts" && (

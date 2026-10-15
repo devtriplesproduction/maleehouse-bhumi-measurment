@@ -220,7 +220,6 @@ async function CommandCenterContent() {
   const financial = workspaceData.financial || {};
   const payrollStatus = workspaceData.payrollStatus || 'Draft';
   const pendingLeaves = workspaceData.pendingLeaves || 0;
-  const pendingQuotations = workspaceData.pendingQuotations || 0;
   const pendingInvoices = workspaceData.pendingInvoices || 0;
   const pendingMaterials = workspaceData.pendingMaterials || 0;
   const dispatchOverrides = workspaceData.dispatchOverridesRaw || [];
@@ -239,14 +238,12 @@ async function CommandCenterContent() {
   const projectStatuses = allProjectStatuses;
   const totalActivePipeline = projectStatuses.filter((p: any) => p.status !== 'completed' && p.status !== 'archived').length;
 
-  // Pipeline distribution groupings
   const pipelineCounts = {
     intake: projectStatuses.filter((p: any) => ['project_created', 'data_collection'].includes(p.status)).length,
-    quotation: projectStatuses.filter((p: any) => ['quotation_requested', 'quotation_sent'].includes(p.status)).length,
+    lead: projectStatuses.filter((p: any) => ['lead', 'lead_created', 'requirement_gathering'].includes(p.status)).length,
     payment: projectStatuses.filter((p: any) => p.status === 'payment_pending').length,
-    cad: projectStatuses.filter((p: any) => ['prototype', 'review'].includes(p.status)).length,
     survey: projectStatuses.filter((p: any) => ['field_work', 'data_sync'].includes(p.status)).length,
-    qc: projectStatuses.filter((p: any) => p.status === 'final_review').length,
+    qc: projectStatuses.filter((p: any) => p.status === 'final_review' || p.status === 'review').length,
     dispatch: projectStatuses.filter((p: any) => p.status === 'ready_for_dispatch').length,
   };
 
@@ -365,10 +362,9 @@ async function CommandCenterContent() {
             </CardHeader>
             <CardContent className="p-4 grid grid-cols-1 md:grid-cols-2 gap-3.5 bg-slate-50/30 dark:bg-slate-950/20 overflow-y-auto max-h-[330px] thin-scrollbar">
               <PipelineStageItem label="Project Created" count={totalActivePipeline} total={totalActivePipeline} colorClass="text-slate-600 dark:text-slate-400" borderClass="border-slate-500/20" bgClass="bg-slate-500/5" barBgClass="bg-slate-500 dark:bg-slate-400" />
-              <PipelineStageItem label="Quotation Phase" count={pipelineCounts.quotation} total={totalActivePipeline} colorClass="text-purple-600 dark:text-purple-400" borderClass="border-purple-500/20" bgClass="bg-purple-500/5" barBgClass="bg-purple-500 dark:bg-purple-400" />
+              <PipelineStageItem label="Lead & Commercial Phase" count={pipelineCounts.lead} total={totalActivePipeline} colorClass="text-purple-600 dark:text-purple-400" borderClass="border-purple-500/20" bgClass="bg-purple-500/5" barBgClass="bg-purple-500 dark:bg-purple-400" />
               <PipelineStageItem label="Advance Payment Pending" count={pipelineCounts.payment} total={totalActivePipeline} colorClass="text-emerald-600 dark:text-emerald-400" borderClass="border-emerald-500/20" bgClass="bg-emerald-500/5" barBgClass="bg-emerald-500 dark:bg-emerald-400" />
               <PipelineStageItem label="Data Collection (Engineer)" count={pipelineCounts.intake} total={totalActivePipeline} colorClass="text-indigo-600 dark:text-indigo-400" borderClass="border-indigo-500/20" bgClass="bg-indigo-500/5" barBgClass="bg-indigo-500 dark:bg-indigo-400" />
-              <PipelineStageItem label="CAD Workspace Drafting" count={pipelineCounts.cad} total={totalActivePipeline} colorClass="text-blue-600 dark:text-blue-450" borderClass="border-blue-500/20" bgClass="bg-blue-500/5" barBgClass="bg-blue-500 dark:bg-blue-400" />
               <PipelineStageItem label="Field Surveying" count={pipelineCounts.survey} total={totalActivePipeline} colorClass="text-sky-600 dark:text-sky-400" borderClass="border-sky-500/20" bgClass="bg-sky-500/5" barBgClass="bg-sky-500 dark:bg-sky-400" />
               <PipelineStageItem label="Lead Engineer Review (QC)" count={pipelineCounts.qc} total={totalActivePipeline} colorClass="text-rose-600 dark:text-rose-400" borderClass="border-rose-500/20" bgClass="bg-rose-500/5" barBgClass="bg-rose-500 dark:bg-rose-400" />
               <PipelineStageItem label="Ready for Delivery" count={pipelineCounts.dispatch} total={totalActivePipeline} colorClass="text-teal-600 dark:text-teal-400" borderClass="border-teal-500/20" bgClass="bg-teal-500/5" barBgClass="bg-teal-500 dark:bg-teal-400" />
@@ -393,7 +389,6 @@ async function CommandCenterContent() {
             <CardContent className="p-4 space-y-3 bg-slate-50/30 dark:bg-slate-950/20 overflow-y-auto max-h-[330px] thin-scrollbar">
               <ActionCardItem label="Dispatch Override" description="Review system override requests" count={dispatchOverrides.filter((r: any) => !r.is_read).length} href="#overrides-widget" icon={ShieldAlert} />
               <ActionCardItem label="Leave Request" description="Apply for personal leaves" count={pendingLeaves} href="/leaves" icon={Users} />
-              <ActionCardItem label="Pending Quotation" description="Client quotes awaiting validation" count={pendingQuotations} href="/accounts/intake" icon={Landmark} />
               <ActionCardItem label="HR's Leave Approval" description="Review pending team leaves" count={pendingLeaves} href="/hr" icon={Users} />
               <ActionCardItem label="EOD Approval" description="Review submitted work logs" count={pendingEodsCount} href="/hr" icon={Clock} />
             </CardContent>

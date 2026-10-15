@@ -30,13 +30,13 @@ interface SalesActionsPanelProps {
 
 export function SalesActionsPanel({ projectId, currentStatus, project, files = [] }: SalesActionsPanelProps) {
   const [showUploader, setShowUploader] = useState(false);
-  const [uploadCategory, setUploadCategory] = useState<'quotation' | 'requirements'>('quotation');
+  const [uploadCategory, setUploadCategory] = useState<'receipt' | 'requirements'>('requirements');
   const [isPending, startTransition] = useTransition();
 
   const checklist = project?.requirement_checklist || {};
 
   // Handlers
-  const handleUploadClick = (category: 'quotation' | 'requirements') => {
+  const handleUploadClick = (category: 'receipt' | 'requirements') => {
     setUploadCategory(category);
     setShowUploader(true);
   };
@@ -108,10 +108,9 @@ export function SalesActionsPanel({ projectId, currentStatus, project, files = [
   const isReadyForHandoff = Object.values(completeness).every((v: any) => v === true);
 
   const isLead = currentStatus === 'lead_created' || currentStatus === 'requirement_gathering';
-  const isQuotation = currentStatus === 'quotation_sent';
   const isPayment = currentStatus === 'payment_pending';
 
-  if (!isLead && !isQuotation && !isPayment && currentStatus !== 'quotation_requested') {
+  if (!isLead && !isPayment) {
     return (
       <div className="glass-card p-8 border-emerald-500/20 bg-emerald-500/5 space-y-8 relative overflow-hidden animate-in fade-in duration-500">
         <div className="absolute top-0 right-0 p-4 opacity-[0.03]">
@@ -129,7 +128,7 @@ export function SalesActionsPanel({ projectId, currentStatus, project, files = [
             Sales & CRM Lifecycle Finalized
           </h3>
           <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">
-            This project has successfully completed requirement verification, commercial quotations, and billing setup.
+            This project has successfully completed requirement verification, commercial setup, and billing milestones.
           </p>
         </div>
 
@@ -167,7 +166,7 @@ export function SalesActionsPanel({ projectId, currentStatus, project, files = [
             <div className="space-y-2 bg-white/40 dark:bg-slate-900/40 border border-slate-200 dark:border-white/5 rounded-2xl p-5">
               <div className="flex items-center gap-2.5 text-xs font-bold text-emerald-500">
                 <Check className="w-4 h-4 shrink-0" strokeWidth={3} />
-                <span>Commercial Quotation Verified & Approved</span>
+                <span>Commercial Amount & Milestones Configured</span>
               </div>
               <div className="flex items-center gap-2.5 text-xs font-bold text-emerald-500">
                 <Check className="w-4 h-4 shrink-0" strokeWidth={3} />
@@ -186,7 +185,7 @@ export function SalesActionsPanel({ projectId, currentStatus, project, files = [
             <div className="p-4 rounded-xl bg-indigo-500/5 border border-indigo-500/10 flex items-center gap-3">
               <ShieldCheck className="w-5 h-5 text-indigo-500 shrink-0" />
               <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
-                The operations control tower is coordinating technical execution, field work, and CAD drafting.
+                The operations control tower is coordinating technical execution, field work, and technical drafting.
               </p>
             </div>
           </div>
@@ -298,7 +297,7 @@ export function SalesActionsPanel({ projectId, currentStatus, project, files = [
 
             <button 
               disabled={!isReadyForHandoff || isPending}
-              onClick={() => handleAdvance('quotation_requested', 'Quotation Requested')}
+              onClick={() => handleAdvance('payment_pending', 'Payment Pending')}
               className={cn(
                 "w-full flex items-center justify-center gap-3 py-4 text-white rounded-xl font-bold shadow-lg transition-all group",
                 isReadyForHandoff && !isPending 
@@ -308,40 +307,16 @@ export function SalesActionsPanel({ projectId, currentStatus, project, files = [
             >
               {isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : (
                 <>
-                  <Calculator className="w-5 h-5" />
-                  Push To Accounts Queue
+                  <DollarSign className="w-5 h-5" />
+                  Proceed to Payment Stage
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </>
               )}
             </button>
             <p className="text-[10px] text-center text-slate-500 font-bold uppercase tracking-widest">
-              Action generates structured handoff packet for Accounts
+              Advances project to commercial payment and milestone collection phase
             </p>
           </div>
-        )}
-
-        {currentStatus === 'quotation_requested' && (
-           <div className="p-6 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-center space-y-2">
-              <Clock className="w-8 h-8 text-amber-500 mx-auto animate-pulse" />
-              <p className="text-sm font-bold text-amber-600 dark:text-amber-400">Awaiting Finance Quotation</p>
-              <p className="text-[10px] text-slate-500 uppercase tracking-widest">Accounts department is currently processing this request.</p>
-           </div>
-        )}
-        
-        {isQuotation && (
-          <button 
-            disabled={isPending}
-            onClick={() => handleAdvance('payment_pending', 'Payment Pending')}
-            className="w-full flex items-center justify-center gap-3 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-500/20 transition-all"
-          >
-             {isPending ? <Loader2 className="w-5 h-5 animate-spin" /> : (
-              <>
-                <DollarSign className="w-5 h-5" />
-                Move to Payment Negotiation
-                <ArrowRight className="w-4 h-4" />
-              </>
-            )}
-          </button>
         )}
 
         {isPayment && (

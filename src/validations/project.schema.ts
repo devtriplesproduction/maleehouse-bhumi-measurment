@@ -12,7 +12,19 @@ const FAKE_DOMAINS = [
   'qwer.com', 'zxcv.com', 'fakemail.net', 'spam.com', 'nobody.com'
 ];
 
-export const createProjectSchema = z.object({
+export const projectMilestoneInputSchema = z.object({
+  id: z.string().optional(),
+  title: z.string().min(1, { message: 'Milestone title is required.' }),
+  description: z.string().optional().nullable(),
+  amount: z.coerce.number().positive({ message: 'Milestone amount must be greater than 0.' }),
+  due_date: z.string().optional().nullable(),
+  linked_stage: z.string().optional().nullable(),
+  is_activation_gate: z.boolean().default(false),
+});
+
+export type ProjectMilestoneInput = z.infer<typeof projectMilestoneInputSchema>;
+
+export const baseProjectSchema = z.object({
   name: z.string().min(3, { message: 'Project name must be at least 3 characters.' }),
   client_name: z.string().min(2, { message: 'Client name must be at least 2 characters.' }),
   gst_number: z.string().optional(),
@@ -41,6 +53,14 @@ export const createProjectSchema = z.object({
   site_type: z.enum(['residential', 'commercial', 'industrial', 'infrastructure', 'other']),
   survey_requirements: z.string().min(10, { message: 'Please provide more details on requirements.' }),
   services: z.array(z.string()).min(1, { message: 'Select at least one service.' }),
+  amount: z.coerce.number().min(0, { message: 'Project amount must be 0 or greater.' }).default(0),
+  bank_account_id: z.string().optional().nullable(),
+  payment_method: z.string().optional().nullable(),
+  gst_type: z.enum(['no_gst', 'cgst_sgst_2_5', 'cgst_sgst_5']).default('no_gst'),
+  gst_rate: z.coerce.number().min(0).default(0),
+  base_amount: z.coerce.number().min(0).optional(),
+  gst_amount: z.coerce.number().min(0).optional(),
+  milestones: z.array(projectMilestoneInputSchema).optional().default([]),
   target_completion_date: z
     .string()
     .optional()
@@ -56,8 +76,20 @@ export const createProjectSchema = z.object({
     ),
 });
 
-export const updateProjectSchema = createProjectSchema.partial().extend({
-  status: z.enum(['lead_created', 'quotation_sent', 'payment_pending', 'payment_done', 'ready_for_dispatch', 'project_created', 'data_collection', 'prototype', 'review', 'field_work', 'data_sync', 'final_review', 'completed']).optional(),
+export const createProjectSchema = baseProjectSchema.refine((data) => {
+  const total = Number(data.amount || 0);
+  if (total > 0 && data.milestones && data.milestones.length > 0) {
+    const sum = data.milestones.reduce((acc, m) => acc + (Number(m.amount) || 0), 0);
+    return Math.abs(sum - total) <= 1;
+  }
+  return true;
+}, {
+  message: 'Sum of milestone amounts must match the total project amount.',
+  path: ['milestones']
+});
+
+export const updateProjectSchema = baseProjectSchema.partial().extend({
+  status: z.enum(['lead_created', 'payment_pending', 'payment_done', 'ready_for_dispatch', 'project_created', 'data_collection', 'prototype', 'review', 'field_work', 'data_sync', 'final_review', 'completed']).optional(),
 });
 
 export type CreateProjectInput = z.infer<typeof createProjectSchema>;

@@ -41,7 +41,7 @@ interface ProjectFileLibraryProps {
 
 const CATEGORY_MAP: Record<string, { label: string, icon: any, color: string }> = {
   photos:       { label: "Photos", icon: ImageIcon, color: "text-emerald-500" },
-  cad_drawing:  { label: "CAD Drawings", icon: Layers, color: "text-blue-500" },
+  final_file:   { label: "Deliverables", icon: Layers, color: "text-blue-500" },
   field_notes:  { label: "Field Notes", icon: Edit3, color: "text-amber-500" },
   legal_doc:    { label: "Legal Documents", icon: FileText, color: "text-rose-500" },
   other:        { label: "General Files", icon: File, color: "text-slate-500" },

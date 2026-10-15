@@ -52,11 +52,8 @@ export async function registerFileAction(payload: RegisterFileInput): Promise<Ac
     }
 
     const categoryFolders: Record<string, string> = {
-      quotation: 'quotation',
       receipt: 'receipt',
       requirements: 'requirements',
-      prototype: 'cad',
-      cad_drawing: 'cad',
       survey_data: 'field-data',
       control_point_image: 'field-data',
       control_point_csv: 'field-data',

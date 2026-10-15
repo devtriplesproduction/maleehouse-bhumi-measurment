@@ -83,7 +83,6 @@ export async function notifyAssignmentAction(userId: string, projectId: string, 
   const { data: project } = await supabase.from('projects').select('name').eq('id', projectId).single()
 
   const roleMessages: Record<string, string> = {
-    cad: 'You have been assigned as CAD Specialist',
     field: 'You have been assigned as Field Engineer',
     engineer: 'You have been assigned as Lead Engineer',
     accountant: 'You have been assigned as Accountant',
@@ -192,32 +191,6 @@ export async function notifyNewProjectAction(projectId: string, projectName: str
   return { success: true }
 }
 
-export async function notifyQuotationCreatedAction(projectId: string | null, quotationNumber: string) {
-  const supabase: any = await createAdminClient()
-  
-  // Notify admin and sales
-  const { data: users } = await supabase.from('profiles').select('id').in('role', ['admin', 'sales']).eq('is_active', true)
-  
-  if (!users || users.length === 0) return { success: true }
-
-  let projectName = 'a project';
-  if (projectId) {
-    const { data: project } = await supabase.from('projects').select('name').eq('id', projectId).single();
-    if (project) projectName = `"${project.name}"`;
-  }
-
-  await insertNotificationsBatch(
-    users.map((u: any) => ({
-      userId: u.id,
-      title: 'Quotation Created',
-      message: `A new quotation (${quotationNumber}) has been created for ${projectName}.`,
-      type: 'system',
-      relatedProjectId: projectId || undefined,
-    }))
-  )
-  return { success: true }
-}
-
 export async function getNotificationsAction() {
   try {
     const profile: any = await getUserProfileAction()
@@ -237,23 +210,20 @@ export async function getNotificationsAction() {
 
     // Define workflow stages to determine if a project has passed a role's responsibilities
     const STAGE_ORDER = [
-      'project_created',    // 0 (accountant)
-      'data_collection',    // 1 (engineer)
-      'prototype',          // 2 (cad)
-      'review',             // 3 (engineer)
-      'field_assigned',     // 4 (engineer)
-      'field_work',         // 5 (field)
-      'data_sync',          // 6 (cad)
-      'final_review',   // 7 (cad)
-      'completed'           // 8 (admin)
+      'project_created',    // 0
+      'data_collection',    // 1
+      'field_assigned',     // 2
+      'field_work',         // 3
+      'data_sync',          // 4
+      'final_review',       // 5
+      'completed'           // 6
     ];
 
     const ROLE_MAX_STAGE: Record<string, number> = {
-      'accountant': 8, // Accountants might need to see things until the end for billing
-      'field': 5,
-      'cad': 7,
-      'engineer': 4,
-      'admin': 8,
+      'accountant': 6, // Accountants might need to see things until the end for billing
+      'field': 3,
+      'engineer': 6,
+      'admin': 6,
     };
 
     const userRole = profile.role || 'user';
@@ -391,13 +361,6 @@ export async function notifyStageUpdateAction(projectId: string, fromStage: stri
     assignments.filter((a: any) => a.role === role).map((a: any) => a.user_id)
 
   const stageNotifications: Record<string, { recipients: string[]; title: string; message: string }[]> = {
-    quotation_requested: [
-      {
-        recipients: accountantIds,
-        title: 'New Quotation Request',
-        message: `A new quotation has been requested for project "${project.name}".`,
-      },
-    ],
     ready_for_dispatch: [
       {
         recipients: adminIds,
@@ -414,23 +377,9 @@ export async function notifyStageUpdateAction(projectId: string, fromStage: stri
     ],
     data_collection: [
       {
-        recipients: [...getAssignedByRole('cad'), ...getAssignedByRole('field')],
+        recipients: getAssignedByRole('field'),
         title: 'Project Assigned to Operations',
         message: `Project "${project.name}" has entered Survey Operations. Please prepare your assignments.`,
-      },
-    ],
-    prototype: [
-      {
-        recipients: getAssignedByRole('cad'),
-        title: 'Action Required: CAD Prototype',
-        message: `Project "${project.name}" is ready for CAD prototype work.`,
-      },
-    ],
-    review: [
-      {
-        recipients: getAssignedByRole('engineer'),
-        title: 'Action Required: Review CAD Deliverables',
-        message: `Project "${project.name}" requires your review of CAD prototype deliverables.`,
       },
     ],
     field_work: [
@@ -447,14 +396,14 @@ export async function notifyStageUpdateAction(projectId: string, fromStage: stri
     ],
     data_sync: [
       {
-        recipients: [...getAssignedByRole('cad'), ...getAssignedByRole('engineer')],
-        title: 'Action Required: CAD Finalization',
-        message: `Field survey data for "${project.name}" is ready for CAD finalization and engineer validation.`,
+        recipients: getAssignedByRole('engineer'),
+        title: 'Action Required: Survey Data Processing',
+        message: `Field survey data for "${project.name}" is ready for engineer validation and deliverable generation.`,
       },
     ],
     completed: [
       {
-        recipients: [...adminIds, ...getAssignedByRole('engineer'), ...getAssignedByRole('cad'), ...getAssignedByRole('field')],
+        recipients: [...adminIds, ...getAssignedByRole('engineer'), ...getAssignedByRole('field')],
         title: 'Project Completed 🎉',
         message: `Project "${project.name}" has been completed and delivered to the client.`,
       },
@@ -536,20 +485,14 @@ export async function notifySupplementalUploadAction(projectId: string) {
     let message = `${uploaderName} uploaded new documents to "${project.name}".`
 
     if (uploaderRole === 'engineer') {
-      // Engineer uploaded client docs: notify CAD and admin
-      recipients = [...getAssignedByRole('cad')]
-      title = 'New Client Documents Available'
-      message = `Engineer ${uploaderName} uploaded new client documents to "${project.name}". Please review and proceed.`
-    } else if (uploaderRole === 'cad') {
-      // CAD uploaded drawings: notify the lead engineer
-      recipients = getAssignedByRole('engineer')
-      title = 'CAD Drawings Submitted for Review'
-      message = `CAD Specialist ${uploaderName} has uploaded drawings for "${project.name}" awaiting your review.`
+      recipients = [...getAssignedByRole('field')]
+      title = 'New Project Documents Available'
+      message = `Engineer ${uploaderName} uploaded new project documents to "${project.name}".`
     } else if (uploaderRole === 'field') {
-      // Field uploaded survey data: notify CAD and engineer
-      recipients = [...getAssignedByRole('cad'), ...getAssignedByRole('engineer')]
+      // Field uploaded survey data: notify engineer
+      recipients = getAssignedByRole('engineer')
       title = 'Field Survey Data Uploaded'
-      message = `Field Engineer ${uploaderName} has uploaded survey data for "${project.name}". Please begin data sync.`
+      message = `Field Engineer ${uploaderName} has uploaded survey data for "${project.name}". Please begin data review.`
     } else {
       // Admin or other: notify all participants
       recipients = Array.from(new Set((assignments || []).map((a: any) => a.user_id)))

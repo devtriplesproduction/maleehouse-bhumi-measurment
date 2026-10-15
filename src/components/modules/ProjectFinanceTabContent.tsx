@@ -79,7 +79,6 @@ interface ProjectFinanceTabContentProps {
   accountantOwner: any;
   role: string;
   theme: any;
-  quotation?: any; // The active quotation with client token
   activityLogs?: any[];
   onRefresh?: () => void;
   profile?: any;
@@ -107,13 +106,11 @@ const MOCK_ACCOUNTANTS = [
 
 const STAGE_LABELS: Record<string, string> = {
   lead_created: "Lead Created",
-  quotation_requested: "Quotation Requested",
-  quotation_sent: "Quotation Sent",
   payment_pending: "Payment Pending",
   payment_done: "Payment Done",
   project_created: "Project Created",
   data_collection: "Data Collection",
-  prototype: "CAD Prototype",
+  prototype: "Technical Drafting",
   review: "Technical Review",
   field_work: "Field Work",
   data_sync: "Data Sync",
@@ -130,7 +127,6 @@ export function ProjectFinanceTabContent({
   accountantOwner,
   role,
   theme,
-  quotation,
   activityLogs = [],
   onRefresh,
   profile,
@@ -191,10 +187,10 @@ export function ProjectFinanceTabContent({
     }).format(value);
   };
 
-  // Calculate Total Billed using Approved Quotation and Billable Field Visits
-  const quotationTotal = quotation && quotation.status === 'Approved' ? Number(quotation.total_amount || 0) : 0;
+  // Calculate Total Billed using Project Budget and Billable Field Visits
+  const projectTotal = Number(project?.budget || 0);
   const visitsTotal = visits.filter(v => v.is_billable).reduce((sum, v) => sum + Number(v.visit_cost || 0), 0);
-  const totalBilled = quotationTotal + visitsTotal;
+  const totalBilled = projectTotal + visitsTotal;
 
   const totalPaid = milestones
     .filter((m) => m.status === "paid")
@@ -230,34 +226,7 @@ export function ProjectFinanceTabContent({
     }
   };
 
-  // 2. WhatsApp Portal Message Dispatcher
-  const handleSendWhatsAppMessage = () => {
-    if (!quotation) {
-      toast.error("Quotation Missing", {
-        description: "Quotation must be drafted first.",
-      });
-      return;
-    }
-
-    // Construct dynamic client proposal link
-    const dynamicPortalLink = `${window.location.origin}/client-portal/${quotation.client_token || quotation.id}`;
-
-    // Construct professional Indian Standard pre-filled message text
-    const messageText = `Dear ${project.client_name},\n\nHope you are doing well!\n\nWe have prepared our formal Surveying Services Commercial Proposal for "${project.name}" under SACSACSAC SAC 9983 professional consulting. \n\nPlease review the item breakdown, GST (18%) details, and lock your approval securely using this WhatsApp Proposal link:\n👉 ${dynamicPortalLink}\n\nOnce approved, our Finance Team will build your custom payment milestones to activate the field crew.\n\nWarm Regards,\nMalee House Surveying Team`;
-
-    // Zero-Cost Dispatch: Launch WhatsApp pre-filled text
-    const clientPhone = project.client_contact
-      ? project.client_contact.replace(/\D/g, "")
-      : "";
-    const whatsappUrl = `https://api.whatsapp.com/send?phone=${encodeURIComponent(clientPhone)}&text=${encodeURIComponent(messageText)}`;
-
-    window.open(whatsappUrl, "_blank");
-    toast.success("WhatsApp Portal Launched", {
-      description: "Message draft successfully prepared in WhatsApp.",
-    });
-  };
-
-  // 3. Milestone Creation Submit
+  // Milestone Creation Submit
   const handleAddMilestoneItem = () => {
     setMilestoneItems([
       ...milestoneItems,
@@ -281,19 +250,17 @@ export function ProjectFinanceTabContent({
     const updated = [...milestoneItems];
     let item = { ...updated[idx], [field]: val };
 
-    const qTotal = quotation && quotation.status === 'Approved' 
-        ? Number(quotation.total_amount || 0) 
-        : (quotation ? Number(quotation.total_amount || 0) : 0);
+    const budgetTotal = Number(project?.budget || 0);
 
-    if (field === 'percentage' && qTotal > 0 && val !== "") {
+    if (field === 'percentage' && budgetTotal > 0 && val !== "") {
       const pct = parseFloat(val);
       if (!isNaN(pct)) {
-        item.amount = (qTotal * (pct / 100)).toFixed(2);
+        item.amount = (budgetTotal * (pct / 100)).toFixed(2);
       }
-    } else if (field === 'amount' && qTotal > 0 && val !== "") {
+    } else if (field === 'amount' && budgetTotal > 0 && val !== "") {
       const amt = parseFloat(val);
       if (!isNaN(amt)) {
-        item.percentage = ((amt / qTotal) * 100).toFixed(2);
+        item.percentage = ((amt / budgetTotal) * 100).toFixed(2);
       }
     }
 
@@ -304,14 +271,14 @@ export function ProjectFinanceTabContent({
   const handleMilestoneSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const qTotal = quotation ? Number(quotation.total_amount || 0) : 0;
+    const budgetTotal = Number(project?.budget || 0);
     const totalAmount = milestoneItems.reduce((acc: number, curr: any) => acc + (parseFloat(curr.amount) || 0), 0);
     const totalPercentage = milestoneItems.reduce((acc: number, curr: any) => acc + (parseFloat(curr.percentage) || 0), 0);
     
-    if (qTotal > 0) {
+    if (budgetTotal > 0) {
       // Adding a small margin (0.1) to account for JavaScript floating point precision issues
-      if (totalAmount > qTotal + 0.1) {
-        toast.error("Validation Failed", { description: "Total milestone amount cannot exceed quotation amount." });
+      if (totalAmount > budgetTotal + 0.1) {
+        toast.error("Validation Failed", { description: "Total milestone amount cannot exceed project budget." });
         return;
       }
       if (totalPercentage > 100.01) {
@@ -569,14 +536,14 @@ export function ProjectFinanceTabContent({
             <button
               onClick={() => {
                 if (milestones.length > 0) {
-                  const qTotal = quotation && quotation.status === 'Approved' ? Number(quotation.total_amount || 0) : (quotation ? Number(quotation.total_amount || 0) : 0);
+                  const budgetTotal = Number(project?.budget || 0);
                   setMilestoneItems(milestones.map((m: any) => {
                     const mAmount = Number(m.amount) || 0;
                     return {
                       id: m.id,
                       title: m.title,
                       description: m.description || "",
-                      percentage: qTotal > 0 ? ((mAmount / qTotal) * 100).toFixed(2) : "",
+                      percentage: budgetTotal > 0 ? ((mAmount / budgetTotal) * 100).toFixed(2) : "",
                       amount: m.amount || "",
                       due_date: m.due_date ? new Date(m.due_date).toISOString().split('T')[0] : "",
                       linked_stage: m.linked_stage || "",
@@ -621,7 +588,7 @@ export function ProjectFinanceTabContent({
                       onChange={(e) =>
                         handleMilestoneFieldChange(idx, "title", e.target.value)
                       }
-                      placeholder="e.g., CAD Prototype Approval"
+                      placeholder="e.g., Deliverable Approval"
                       className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-2.5 rounded-xl text-xs text-slate-900 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
                     />
                   </div>
@@ -695,11 +662,13 @@ export function ProjectFinanceTabContent({
                       className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 p-2.5 rounded-xl text-xs text-slate-900 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
                     >
                       <option value="">None (Unrestricted)</option>
-                      {Object.keys(STAGE_LABELS).map((stg: any) => (
-                        <option key={stg} value={stg}>
-                          {STAGE_LABELS[stg]}
-                        </option>
-                      ))}
+                      {Object.keys(STAGE_LABELS)
+                        .filter((stg) => !["prototype", "review"].includes(stg) || item.linked_stage === stg)
+                        .map((stg: any) => (
+                          <option key={stg} value={stg}>
+                            {STAGE_LABELS[stg]}
+                          </option>
+                        ))}
                     </select>
                   </div>
                   <div className="flex items-center gap-3 justify-between p-2">

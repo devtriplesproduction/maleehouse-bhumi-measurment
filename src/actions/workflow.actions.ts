@@ -162,7 +162,7 @@ export async function approveDispatchOverrideAction(projectId: string) {
     if (error) throw error;
       
     // Only auto-advance if the project is stuck in a pre-dispatch stage
-    const preDispatchStages = ['lead_created', 'quotation_requested', 'quotation_sent', 'payment_pending', 'payment_done', 'ready_for_dispatch'];
+    const preDispatchStages = ['lead_created', 'payment_pending', 'payment_done', 'ready_for_dispatch'];
     if (updatedProject && preDispatchStages.includes(updatedProject.status)) {
       await transitionWorkflowAction(projectId, "project_created", "Admin approved dispatch override without payment");
     }
@@ -268,22 +268,13 @@ async function validateStageTransition(
     }
 
     switch (newStage) {
-      case "quotation_sent": {
-        const { data: quote } = await supabase.from("quotations").select("status").eq("project_id", projectId).in("status", ["Sent", "Viewed", "Approved"]).limit(1);
-        if (!quote || quote.length === 0) {
-          return {
-            success: false,
-            error: "Cannot transition to Quotation Sent: No quotation has been sent or approved for this project."
-          };
-        }
-        break;
-      }
       case "payment_pending": {
-        const { data: quote } = await supabase.from("quotations").select("status").eq("project_id", projectId).eq("status", "Approved").limit(1);
-        if (!quote || quote.length === 0) {
+        const { data: milestones } = await supabase.from("project_milestones").select("id").eq("project_id", projectId).limit(1);
+        const { data: proj } = await supabase.from("projects").select("budget").eq("id", projectId).maybeSingle();
+        if ((!milestones || milestones.length === 0) && (!proj || !proj.budget || proj.budget <= 0)) {
           return {
             success: false,
-            error: "Cannot transition to Payment Pending: No approved quotation exists for this project."
+            error: "Cannot transition to Payment Pending: Project amount and milestones are required."
           };
         }
         break;
@@ -303,11 +294,12 @@ async function validateStageTransition(
         break;
       }
       case "ready_for_dispatch": {
-        const { data: quote } = await supabase.from("quotations").select("status").eq("project_id", projectId).eq("status", "Approved").limit(1);
-        if (!quote || quote.length === 0) {
+        const { data: milestones } = await supabase.from("project_milestones").select("id").eq("project_id", projectId).limit(1);
+        const { data: proj } = await supabase.from("projects").select("budget").eq("id", projectId).maybeSingle();
+        if ((!milestones || milestones.length === 0) && (!proj || !proj.budget || proj.budget <= 0)) {
           return {
             success: false,
-            error: "Cannot transition to Ready For Dispatch: An approved quotation is required."
+            error: "Cannot transition to Ready For Dispatch: Project amount and milestones are required."
           };
         }
         break;
@@ -401,6 +393,21 @@ async function validateStageTransition(
             error: "Cannot complete project: Project must pass through Survey Validation / Final Review first."
           };
         }
+
+        // Gate 5: All assigned materials and equipment must be submitted to the company
+        const { data: pendingMaterials } = await supabase
+          .from("material_requests")
+          .select("id, item_name, quantity")
+          .eq("project_id", projectId)
+          .in("status", ["assigned", "requested"]);
+
+        if (pendingMaterials && pendingMaterials.length > 0) {
+          const names = pendingMaterials.map((m: any) => `${m.quantity}x ${m.item_name}`).join(", ");
+          return {
+            success: false,
+            error: `Cannot complete project: All assigned materials must be submitted to the company first (${names}).`
+          };
+        }
         break;
       }
     }
@@ -448,7 +455,6 @@ export async function transitionWorkflowAction(
     // 3b. Operational Stage Gate Validation
     const STAGE_ORDER = [
       "lead",
-      "quotation_sent",
       "payment_pending",
       "payment_done",
       "ready_for_dispatch",

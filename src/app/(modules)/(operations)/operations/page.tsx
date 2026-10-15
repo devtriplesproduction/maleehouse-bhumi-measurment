@@ -12,9 +12,6 @@ export default async function OperationsPage() {
   const firstName = profile?.first_name || "Operator";
   const role = profile?.role || "engineer";
 
-  if (role === "cad") {
-    return redirect("/cad");
-  }
 
   return (
     <OperationsDashboardClient

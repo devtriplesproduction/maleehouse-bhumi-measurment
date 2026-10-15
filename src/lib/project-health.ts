@@ -45,7 +45,7 @@ export function calculateProjectHealth(context: {
     details.push(`${context.overdueTasksCount} task(s) currently overdue past deadlines.`);
   }
   if (context.rejectionCount > 0) {
-    details.push(`${context.rejectionCount} CAD revision rejection(s) logged.`);
+    details.push(`${context.rejectionCount} Deliverable review rejection(s) logged.`);
   }
   if (context.slaViolationsCount > 0) {
     details.push(`${context.slaViolationsCount} SLA compliance deadline violation(s) detected.`);
@@ -87,12 +87,12 @@ export function getSLAViolationsCount(tasks: any[]): number {
     
     // Custom SLA targets in hours
     const slaLimits: Record<string, number> = {
-      cad_review: 24,
+      deliverable_review: 24,
       field_upload: 48,
       qc_signoff: 12
     };
 
-    const taskType = t.type || (t.title?.toLowerCase().includes("cad") ? "cad_review" : t.title?.toLowerCase().includes("field") ? "field_upload" : "qc_signoff");
+    const taskType = t.type || (t.title?.toLowerCase().includes("deliverable") || t.title?.toLowerCase().includes("draft") ? "deliverable_review" : t.title?.toLowerCase().includes("field") ? "field_upload" : "qc_signoff");
     const limitHours = slaLimits[taskType] || 48; // default to 48 hours
 
     const createdTime = new Date(t.created_at || t.dueDate || new Date()).getTime();

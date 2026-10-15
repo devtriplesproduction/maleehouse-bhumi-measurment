@@ -63,10 +63,10 @@ interface ProjectDetailTabsProps {
   activityLogs: any[];
   comments: any[];
   files: any[];
+  cadRevisions?: any[];
   teamMembers: any[];
   milestones: any[];
   allUsers: any[];
-  cadRevisions?: any[];
   fieldReports?: any[];
   theme: {
     primary: string;
@@ -87,10 +87,10 @@ export function ProjectDetailTabs({
   activityLogs,
   comments,
   files,
+  cadRevisions = [],
   teamMembers,
   milestones,
   allUsers,
-  cadRevisions,
   fieldReports,
   theme,
   serverRenderTime = 0
@@ -240,6 +240,8 @@ export function ProjectDetailTabs({
                   allUsers={allUsers}
                   files={localFiles}
                   cadRevisions={cadRevisions}
+                  activityLogs={activityLogs}
+                  comments={comments}
                   onUpdateProject={(updatedProject: any) => setLocalProject({ ...localProject, ...updatedProject })}
                   onUpdateTeamMembers={(updatedTeam: any) => setLocalTeamMembers(updatedTeam)}
                   onUpdateFiles={(updatedFiles: any) => setLocalFiles(updatedFiles)}
@@ -338,7 +340,6 @@ export function ProjectDetailTabs({
                     accountantOwner={financeData.accountantOwner}
                     role={userRole}
                     theme={theme}
-                    quotation={financeData.activeQuotation}
                     activityLogs={activityLogs}
                     projectExpenses={financeData.projectExpenses}
                   />

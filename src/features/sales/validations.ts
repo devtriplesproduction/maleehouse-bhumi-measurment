@@ -5,8 +5,7 @@ export const leadStatusSchema = z.enum([
   'Contacted',
   'Requirement Gathering',
   'Follow-up Pending',
-  'Quotation Requested',
-  'Quotation Sent',
+  'Commercial Finalized',
   'Negotiation',
   'Won',
   'Lost',
@@ -18,7 +17,7 @@ export const followUpStatusSchema = z.enum([
   'Interested',
   'Not Reachable',
   'Waiting for Documents',
-  'Quotation Pending',
+  'Commercial Pending',
   'Negotiation',
   'Closed'
 ]);

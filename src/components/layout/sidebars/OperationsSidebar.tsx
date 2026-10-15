@@ -10,7 +10,6 @@ export function OperationsSidebar() {
   const operationsLinks: any[] = [];
 
   if (role === "engineer") operationsLinks.push({ title: "Engineering", href: "/engineer", icon: LayoutDashboard });
-  if (role === "cad") operationsLinks.push({ title: "CAD & Drafting", href: "/cad", icon: PenTool });
   if (role === "field") operationsLinks.push({ title: "Field Operations", href: "/field", icon: MapPin });
   if (role === "engineer") operationsLinks.push({ title: "Review Queue", href: "/review", icon: ClipboardCheck });
 

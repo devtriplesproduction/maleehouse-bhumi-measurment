@@ -12,10 +12,10 @@ interface ProjectOperationsTabProps {
   teamMembers: any[];
   isFrozen?: boolean;
   files?: any[];
+  cadRevisions?: any[];
   comments: any[];
   activityLogs: any[];
   workflowHistory: any[];
-  cadRevisions?: any[];
   onUpdateFiles?: (files: any[]) => void;
 }
 
@@ -27,14 +27,14 @@ export default function ProjectOperationsTab({
   teamMembers,
   isFrozen,
   files,
+  cadRevisions,
   comments,
   activityLogs,
   workflowHistory,
-  cadRevisions,
   onUpdateFiles,
 }: ProjectOperationsTabProps) {
   // Determine if user is operational role
-  const isOperational = ['admin', 'engineer', 'cad', 'field'].includes(userRole);
+  const isOperational = ['admin', 'engineer', 'field'].includes(userRole);
   const isAssigned = userRole === 'admin' || teamMembers.some((m: any) => m.userId === currentUserId || m.user_id === currentUserId);
 
   return (

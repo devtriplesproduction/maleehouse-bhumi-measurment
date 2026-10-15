@@ -38,6 +38,16 @@ export default async function ReceiptPage({
   }
 
   const row = data as any
+  const checklist = row.projects?.requirement_checklist;
+  const commMeta = checklist?.commercial_metadata || checklist;
+  const rawDesc = String(row.description || row.title || '');
+  const inferredGstType = rawDesc.includes('10% GST') || rawDesc.includes('5% CGST') 
+    ? 'cgst_sgst_5' 
+    : (rawDesc.includes('5% GST') || rawDesc.includes('2.5% CGST') ? 'cgst_sgst_2_5' : 'no_gst');
+
+  const gstType = commMeta?.gst_type || inferredGstType;
+  const gstRate = commMeta?.gst_rate ?? (gstType === 'cgst_sgst_5' ? 10 : gstType === 'cgst_sgst_2_5' ? 5 : 0);
+
   let receiptData
 
   if (queryType === 'milestone') {
@@ -56,6 +66,10 @@ export default async function ReceiptPage({
       originalId: row.id,
       projectId: row.project_id,
       clientGstNumber: row.projects?.gst_number,
+      gstType,
+      gstRate,
+      baseAmount: commMeta?.base_amount,
+      gstAmount: commMeta?.gst_amount,
     }
   } else {
     const cleanId =
@@ -73,6 +87,10 @@ export default async function ReceiptPage({
       originalId: row.id,
       projectId: row.projects?.id || row.project_id,
       clientGstNumber: row.projects?.gst_number,
+      gstType,
+      gstRate,
+      baseAmount: commMeta?.base_amount,
+      gstAmount: commMeta?.gst_amount,
     }
   }
 

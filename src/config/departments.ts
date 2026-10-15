@@ -1,7 +1,7 @@
 export interface DesignationConfig {
   id: string;
   name: string;
-  systemRole: "admin" | "sales" | "accountant" | "engineer" | "cad" | "field" | "hr";
+  systemRole: "admin" | "sales" | "accountant" | "engineer" | "field" | "hr";
 }
 
 export interface DepartmentConfig {
@@ -40,8 +40,8 @@ export const DEPARTMENTS: DepartmentConfig[] = [
     id: "design",
     name: "Design Department",
     designations: [
-      { id: "cad_eng", name: "CAD Engineer", systemRole: "cad" },
-      { id: "lidar_specialist", name: "Lidar Specialist", systemRole: "cad" },
+      { id: "design_eng", name: "Design Engineer", systemRole: "engineer" },
+      { id: "lidar_specialist", name: "Lidar Specialist", systemRole: "engineer" },
     ]
   }
 ];
@@ -50,8 +50,8 @@ export function getDesignationsForDepartment(deptId: string): DesignationConfig[
   return DEPARTMENTS.find((d: any) => d.id === deptId)?.designations || [];
 }
 
-export function getSystemRoleForDesignation(deptId: string, designationId: string): "admin" | "sales" | "accountant" | "engineer" | "cad" | "field" | "hr" {
+export function getSystemRoleForDesignation(deptId: string, designationId: string): "admin" | "sales" | "accountant" | "engineer" | "field" | "hr" {
   const dept = DEPARTMENTS.find((d: any) => d.id === deptId);
   const desig = dept?.designations.find((r: any) => r.id === designationId);
-  return (desig?.systemRole as "admin" | "sales" | "accountant" | "engineer" | "cad" | "field" | "hr") || "engineer";
+  return (desig?.systemRole as "admin" | "sales" | "accountant" | "engineer" | "field" | "hr") || "engineer";
 }

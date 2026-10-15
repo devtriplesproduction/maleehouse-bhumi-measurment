@@ -56,17 +56,6 @@ export function OperationsControlCenter({
   const { toast } = useToast();
   const router = useRouter();
 
-  // Engineer Intake Redesign States
-  const [cadUsers, setCadUsers] = useState<any[]>([]);
-  const [selectedCAD, setSelectedCAD] = useState<string>("");
-  const [isLoadingCAD, setIsLoadingCAD] = useState(false);
-  const [isAssigningCAD, setIsAssigningCAD] = useState(false);
-  const [showAddCAD, setShowAddCAD] = useState(false);
-  const [removingCADId, setRemovingCADId] = useState<string | null>(null);
-  const [editingCADId, setEditingCADId] = useState<string | null>(null);
-  const [editSelectedCAD, setEditSelectedCAD] = useState<string>("");
-  const [isEditingCAD, setIsEditingCAD] = useState(false);
-
   const [fieldUsers, setFieldUsers] = useState<any[]>([]);
   const [selectedField, setSelectedField] = useState<string>("");
   const [isAssigningField, setIsAssigningField] = useState(false);
@@ -84,10 +73,7 @@ export function OperationsControlCenter({
   const [isUploadingDoc, setIsUploadingDoc] = useState(false);
   const [isDeletingFile, setIsDeletingFile] = useState(false);
 
-  const [handoverNote, setHandoverNote] = useState("");
-  const [isPushingToCAD, setIsPushingToCAD] = useState(false);
-
-  // CAD Data Sync Rejection States
+  // Data Sync Rejection States
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
   const [rejectionNote, setRejectionNote] = useState("");
   const [isRejecting, setIsRejecting] = useState(false);
@@ -100,13 +86,10 @@ export function OperationsControlCenter({
   React.useEffect(() => {
     if (userRole === 'engineer' && (projectStatus === 'project_created' || projectStatus === 'data_collection')) {
       const loadUsers = async () => {
-        setIsLoadingCAD(true);
         const result = await getOpsTeamMembersAction();
         if (result.success && result.data) {
-          setCadUsers(result.data.filter((u: any) => u.role === 'cad'));
           setFieldUsers(result.data.filter((u: any) => u.role === 'field'));
         }
-        setIsLoadingCAD(false);
       };
       loadUsers();
     }
@@ -175,63 +158,6 @@ export function OperationsControlCenter({
     }
   };
 
-  const handleAssignCAD = async () => {
-    if (!selectedCAD) return;
-    setIsAssigningCAD(true);
-    try {
-      const result = await assignUserToProjectAction(projectId, selectedCAD, 'cad');
-      if (result?.success) {
-        toast({ title: "CAD Engineer Assigned", variant: "success" });
-        setSelectedCAD("");
-        setShowAddCAD(false);
-      } else {
-        throw new Error(result?.error || "Assignment failed");
-      }
-    } catch (err: any) {
-      toast({ title: "Assignment Failed", description: err.message, variant: "error" });
-    } finally {
-      setIsAssigningCAD(false);
-    }
-  };
-
-  const handleRemoveCAD = async (assignmentId: string) => {
-    if (!confirm('Remove this CAD engineer from the project?')) return;
-    setRemovingCADId(assignmentId);
-    try {
-      const result = await removeUserFromProjectAction(assignmentId, projectId);
-      if (result?.success) {
-        toast({ title: "CAD Engineer Removed", variant: "success" });
-      } else {
-        throw new Error(result?.error || "Removal failed");
-      }
-    } catch (err: any) {
-      toast({ title: "Remove Failed", description: err.message, variant: "error" });
-    } finally {
-      setRemovingCADId(null);
-    }
-  };
-
-  const handleEditCAD = async (assignmentId: string) => {
-    if (!editSelectedCAD) return;
-    setIsEditingCAD(true);
-    try {
-      // Remove old, assign new
-      await removeUserFromProjectAction(assignmentId, projectId);
-      const result = await assignUserToProjectAction(projectId, editSelectedCAD, 'cad');
-      if (result?.success) {
-        toast({ title: "CAD Engineer Updated", variant: "success" });
-        setEditingCADId(null);
-        setEditSelectedCAD("");
-      } else {
-        throw new Error(result?.error || "Update failed");
-      }
-    } catch (err: any) {
-      toast({ title: "Update Failed", description: err.message, variant: "error" });
-    } finally {
-      setIsEditingCAD(false);
-    }
-  };
-
   const handleAssignField = async () => {
     if (!selectedField) return;
     setIsAssigningField(true);
@@ -285,24 +211,6 @@ export function OperationsControlCenter({
       toast({ title: "Update Failed", description: err.message, variant: "error" });
     } finally {
       setIsEditingField(false);
-    }
-  };
-
-  const handlePushToCAD = async () => {
-    setIsPushingToCAD(true);
-    try {
-      const comment = handoverNote.trim() || "Engineer collected required documents, assigned CAD Engineer, and initiated CAD Prototyping.";
-      const result = await transitionWorkflowAction(projectId, 'prototype', comment);
-      if (result?.success) {
-        toast({ title: "Project Transmitted to CAD", variant: "success" });
-        setHandoverNote("");
-      } else {
-        throw new Error(result?.error || "Transmission failed");
-      }
-    } catch (err: any) {
-      toast({ title: "Transmission Failed", description: err.message, variant: "error" });
-    } finally {
-      setIsPushingToCAD(false);
     }
   };
 
@@ -437,7 +345,7 @@ export function OperationsControlCenter({
     }
   };
 
-  const intakeFiles = files.filter((f: any) => ['requirements', 'quotation', 'receipt', 'intake_document'].includes(f.category));
+  const intakeFiles = files.filter((f: any) => ['requirements', 'receipt', 'intake_document'].includes(f.category));
 
   if (isAssigned) {
     return null;
@@ -458,7 +366,7 @@ export function OperationsControlCenter({
                   </p>
                 </div>
               </div>
-              {['engineer', 'cad', 'field'].includes(userRole) && (
+              {['engineer', 'field'].includes(userRole) && (
                 <button
                   onClick={handleClaimProject}
                   disabled={isClaiming}
@@ -470,7 +378,7 @@ export function OperationsControlCenter({
               )}
             </div>
           ) : (
-            // Standard View for non-engineers (CAD, Field, QC, etc.)
+            // Standard View for non-engineers (Field, QC, etc.)
             <>
 
             </>
@@ -587,7 +495,7 @@ export function OperationsControlCenter({
               Reopen Completed Project
             </DialogTitle>
             <DialogDescription>
-              This action will unlock the project and transition it back to the Survey Data Sync stage, allowing CAD corrections and Engineer validations.
+              This action will unlock the project and transition it back to the Survey Data Sync stage, allowing deliverable corrections and Engineer validations.
             </DialogDescription>
           </DialogHeader>
 

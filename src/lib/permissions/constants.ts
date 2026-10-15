@@ -15,8 +15,8 @@ export const PERMISSIONS = {
   // Workflow Stages Configuration
   STAGE_UPDATE: {
     admin: ["*", "final_review"],
-    sales: ["lead_created", "quotation_requested", "quotation_sent", "payment_pending"],
-    accountant: ["quotation_sent", "payment_pending", "payment_done", "ready_for_dispatch", "project_created", "quotation_requested"],
+    sales: ["lead_created", "payment_pending"],
+    accountant: ["payment_pending", "payment_done", "ready_for_dispatch", "project_created"],
     engineer: [
       "data_collection", "field_work", "data_sync",
       "field_assigned", "review", "payment_pending", "completed", "final_review"
@@ -29,7 +29,7 @@ export const PERMISSIONS = {
   // File Upload Categories
   FILE_UPLOAD: {
     admin: ["*"],
-    sales: ["quotation", "requirements"],
+    sales: ["requirements"],
     accountant: ["receipt"],
     engineer: ["requirements", "survey_data", "final_file", "technical_doc"],
     field: ["survey_data", "site_photo", "field_report"],

@@ -28,7 +28,7 @@ type FilterType = 'today' | '3days' | '7days' | '30days' | 'all';
 type ActivityType =
   | 'critical'     // qc returns, rejections — rose
   | 'actionable'   // prototype / blueprint uploads — blue
-  | 'financial'    // quotation, invoice, payment — amber
+  | 'financial'    // invoice, payment, billing — amber
   | 'approval'     // approvals, deliverable sign-offs — emerald
   | 'survey'       // field visits, survey completions — sky
   | 'documents'    // document uploads, requirements — violet
@@ -134,9 +134,9 @@ function classify(summary: string): ActivityType {
   const s = summary.toLowerCase();
   if (s.includes('qc returned') || s.includes('rejected') || s.includes('failed'))
     return 'critical';
-  if (s.includes('prototype uploaded') || s.includes('blueprint uploaded') || s.includes('cad uploaded'))
+  if (s.includes('drafting uploaded') || s.includes('blueprint uploaded') || s.includes('deliverable uploaded'))
     return 'actionable';
-  if (s.includes('quotation') || s.includes('invoice') || s.includes('payment') || s.includes('billing'))
+  if (s.includes('invoice') || s.includes('payment') || s.includes('billing'))
     return 'financial';
   if (s.includes('approved') || s.includes('deliverable') || s.includes('signed off'))
     return 'approval';

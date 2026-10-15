@@ -44,7 +44,7 @@ export function ProjectTeamManager({ projectId, initialTeam }: ProjectTeamManage
         (u: any) =>
           !teamUserIds.has(u.id) &&
           u.is_active !== false &&
-          ['engineer', 'cad', 'field', 'admin'].includes((u.role || '').toLowerCase())
+          ['engineer', 'field', 'admin'].includes((u.role || '').toLowerCase())
       );
       setAllUsers(ops.length > 0 ? ops : (result.data || []).filter((u: any) => !teamUserIds.has(u.id)));
     } else {
@@ -170,7 +170,6 @@ export function ProjectTeamManager({ projectId, initialTeam }: ProjectTeamManage
                 onValueChange={setSelectedRole}
               >
                 <SelectItem value="engineer">Engineer</SelectItem>
-                <SelectItem value="cad">CAD</SelectItem>
                 <SelectItem value="field">Field</SelectItem>
                 <SelectItem value="sales_rep">Sales Rep</SelectItem>
               </Select>

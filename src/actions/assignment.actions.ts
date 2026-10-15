@@ -89,7 +89,6 @@ export async function assignUserToProjectAction(projectId: string, userId: strin
 
     revalidatePath(`/projects/${projectId}`)
     revalidatePath('/engineer')
-    revalidatePath('/cad')
     revalidatePath('/field')
     return { success: true, data: existing, error: null }
   } catch (err) {
@@ -112,7 +111,6 @@ export async function removeUserFromProjectAction(assignmentId: string, projectI
 
     revalidatePath(`/projects/${projectId}`)
     revalidatePath('/engineer')
-    revalidatePath('/cad')
     revalidatePath('/field')
     return { success: true, error: null }
   } catch (err) {

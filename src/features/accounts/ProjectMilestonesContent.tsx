@@ -46,13 +46,10 @@ const ACTIVE_SURVEY_STATUSES = [
   "payment_done",
   "project_created",
   "data_collection",
-  "prototype",
-  "review",
   "field_work",
   "data_sync",
-  "post_processing",
   "final_review",
-  "delivery"
+  "completed"
 ];
 
 // Helper to format currency
@@ -260,7 +257,7 @@ export function ProjectMilestonesContent({ initialProjects }: { initialProjects:
     if (qTotal > 0) {
       // Adding a small margin (0.1) to account for JavaScript floating point precision issues
       if (totalAmount > qTotal + 0.1) {
-        toast.error("Total milestone amount cannot exceed the quotation amount.");
+        toast.error("Total milestone amount cannot exceed the project commercial amount.");
         return;
       }
       if (totalPercentage > 100.01) {
@@ -313,7 +310,7 @@ export function ProjectMilestonesContent({ initialProjects }: { initialProjects:
           if (dispatchRes?.success) {
             toast.success("Project set to Payment Pending.");
             setTimeout(() => {
-              router.push("/accounts/approvals");
+              router.push("/accounts/billing");
               router.refresh();
             }, 1000);
           } else {
@@ -759,7 +756,6 @@ export function ProjectMilestonesContent({ initialProjects }: { initialProjects:
                                         onValueChange={(val) => updateMilestone(idx, 'linked_stage', val)}
                                         placeholder="-- No linked stage --"
                                         buttonClassName="h-9 w-full bg-slate-50 dark:bg-white/5 border-slate-200 dark:border-white/10 rounded-lg px-3 text-xs text-slate-900 dark:text-white"
-                                        disabled={idx === 0}
                                       >
                                         <SelectItem value="" className="text-xs py-2">-- No linked stage --</SelectItem>
                                         
@@ -773,14 +769,17 @@ export function ProjectMilestonesContent({ initialProjects }: { initialProjects:
                                         ))}
 
                                         <div className="px-3 py-1.5 mt-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-t border-slate-100 dark:border-white/5 pt-2">Workflow Stages</div>
+                                        <SelectItem value="project_created" className="text-xs py-2">Project Created</SelectItem>
                                         <SelectItem value="data_collection" className="text-xs py-2">Data Collection</SelectItem>
-                                        <SelectItem value="prototype" className="text-xs py-2">CAD Prototype</SelectItem>
-                                        <SelectItem value="review" className="text-xs py-2">CAD Review</SelectItem>
-                                        <SelectItem value="field_work" className="text-xs py-2">Field Team Assignment</SelectItem>
-                                        <SelectItem value="data_sync" className="text-xs py-2">Survey Collection</SelectItem>
-                                        <SelectItem value="post_processing" className="text-xs py-2">Survey Validation</SelectItem>
-                                        <SelectItem value="final_review" className="text-xs py-2">Final Deliverable</SelectItem>
-                                        <SelectItem value="delivery" className="text-xs py-2">Delivered</SelectItem>
+                                        <SelectItem value="field_work" className="text-xs py-2">Field Work</SelectItem>
+                                        <SelectItem value="data_sync" className="text-xs py-2">Data Sync</SelectItem>
+                                        <SelectItem value="final_review" className="text-xs py-2">Final Review</SelectItem>
+                                        <SelectItem value="completed" className="text-xs py-2">Completed</SelectItem>
+                                        {m.linked_stage && !["project_created", "data_collection", "field_work", "data_sync", "final_review", "completed"].includes(m.linked_stage) && !m.linked_stage.startsWith("visit:") && (
+                                          <SelectItem value={m.linked_stage} className="text-xs py-2 text-amber-500">
+                                            {m.linked_stage} (Legacy)
+                                          </SelectItem>
+                                        )}
                                       </Select>
                                     </div>
 

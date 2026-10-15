@@ -61,7 +61,20 @@ export async function createProjectAction(payload: CreateProjectInput): Promise<
     const existingIds = (existingProjects || []).map((p: any) => p.id);
     const projectId = generateSequentialCode('PRJ', existingIds, undefined, explicitPrefix);
 
-    const initialStatus = profile.role === 'accountant' ? 'quotation_requested' : 'lead_created';
+    const baseCommercialAmount = Number(validatedFields.data.amount || 0);
+    const gstType = validatedFields.data.gst_type || 'no_gst';
+    let gstRate = 0;
+    if (gstType === 'cgst_sgst_2_5') {
+      gstRate = 5; // 2.5% CGST + 2.5% SGST
+    } else if (gstType === 'cgst_sgst_5') {
+      gstRate = 10; // 5% CGST + 5% SGST
+    }
+    const calculatedGstAmount = Math.round((baseCommercialAmount * gstRate) / 100);
+    const totalContractAmount = baseCommercialAmount + calculatedGstAmount;
+
+    const initialStatus = totalContractAmount > 0 ? 'payment_pending' : 'lead_created';
+    const bankAccountId = validatedFields.data.bank_account_id || null;
+    const paymentMethod = validatedFields.data.payment_method || 'bank_transfer';
 
     const newProject = {
       id: projectId,
@@ -74,24 +87,90 @@ export async function createProjectAction(payload: CreateProjectInput): Promise<
       site_coordinates: validatedFields.data.site_coordinates || '',
       survey_requirements: validatedFields.data.survey_requirements || '',
       services: validatedFields.data.services || [],
+      budget: totalContractAmount,
       target_completion_date: validatedFields.data.target_completion_date || null,
       status: initialStatus,
       created_by: profile.id,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       deleted_at: null,
-      requirement_checklist: {}
+      requirement_checklist: {
+        bank_account_id: bankAccountId,
+        payment_method: paymentMethod,
+        gst_type: gstType,
+        gst_rate: gstRate,
+        base_amount: baseCommercialAmount,
+        gst_amount: calculatedGstAmount,
+        total_amount: totalContractAmount,
+      }
     };
 
     const { error: insertError } = await supabase.from('projects').insert([newProject]);
     if (insertError) throw insertError;
 
+    // Direct Commercial Setup: initialize project_finances
+    if (totalContractAmount > 0) {
+      await supabase.from('project_finances').upsert({
+        project_id: projectId,
+        total_quoted_amount: totalContractAmount,
+        total_invoiced_amount: 0,
+        total_paid_amount: 0,
+        currency: 'INR',
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'project_id' });
+    }
+
+    // Direct Milestones Setup: create project_milestones
+    const milestones = validatedFields.data.milestones || [];
+    if (milestones.length > 0) {
+      const milestoneRows = milestones.map((m: any, idx: number) => ({
+        id: m.id && !m.id.startsWith('temp-') ? m.id : `mil-${Date.now()}-${Math.random().toString(36).substring(2, 6)}-${idx}`,
+        project_id: projectId,
+        title: m.title,
+        description: m.description || null,
+        amount: Number(m.amount) || 0,
+        due_date: m.due_date || null,
+        linked_stage: m.linked_stage || null,
+        is_activation_gate: Boolean(m.is_activation_gate),
+        status: 'pending',
+        is_compulsory: false,
+        sort_order: idx + 1,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }));
+
+      const { error: milError } = await supabase.from('project_milestones').insert(milestoneRows);
+      if (milError) {
+        console.error('Failed to create project milestones at creation:', milError);
+      }
+    } else if (totalContractAmount > 0) {
+      const methodLabel = paymentMethod.replace('_', ' ').toUpperCase();
+      const gstLabel = gstType === 'no_gst' ? 'No GST' : gstType === 'cgst_sgst_2_5' ? '2.5% CGST + 2.5% SGST' : '5% CGST + 5% SGST';
+      await supabase.from('project_milestones').insert([{
+        id: `mil-${Date.now()}-${Math.random().toString(36).substring(2, 6)}-0`,
+        project_id: projectId,
+        title: 'Mobilization / Advance Payment',
+        description: `Initial project milestone (${methodLabel} - ${gstLabel})`,
+        amount: totalContractAmount,
+        due_date: validatedFields.data.target_completion_date || null,
+        linked_stage: null,
+        is_activation_gate: true,
+        status: 'pending',
+        is_compulsory: false,
+        sort_order: 1,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }]);
+    }
+
+    const methodDisplay = paymentMethod.replace('_', ' ');
+    const gstDisplay = gstType === 'no_gst' ? 'No GST' : gstType === 'cgst_sgst_2_5' ? '2.5% CGST + 2.5% SGST' : '5% CGST + 5% SGST';
     await supabase.from("workflow_history").insert({
       project_id: projectId,
       from_stage: null,
       to_stage: initialStatus,
       changed_by: profile.id,
-      comment: "Project created.",
+      comment: `Project created with commercial total ₹${totalContractAmount.toLocaleString('en-IN')} (Base: ₹${baseCommercialAmount.toLocaleString('en-IN')}, GST: ${gstDisplay}, Mode: ${methodDisplay}).`,
       created_at: new Date().toISOString()
     });
 
@@ -99,7 +178,18 @@ export async function createProjectAction(payload: CreateProjectInput): Promise<
       project_id: projectId,
       user_id: profile.id,
       action: "PROJECT_CREATED",
-      details: { name: validatedFields.data.name, client_name: validatedFields.data.client_name },
+      details: { 
+        name: validatedFields.data.name, 
+        client_name: validatedFields.data.client_name,
+        amount: totalContractAmount,
+        base_amount: baseCommercialAmount,
+        gst_type: gstType,
+        gst_rate: gstRate,
+        gst_amount: calculatedGstAmount,
+        bank_account_id: bankAccountId,
+        payment_method: paymentMethod,
+        milestones_count: milestones.length || (totalContractAmount > 0 ? 1 : 0)
+      },
       created_at: new Date().toISOString()
     });
 
@@ -108,13 +198,15 @@ export async function createProjectAction(payload: CreateProjectInput): Promise<
       module: 'Projects',
       entityType: 'Project',
       entityId: projectId,
-      description: `Created project: ${validatedFields.data.name}`,
+      description: `Created project: ${validatedFields.data.name} (Amount: INR ${totalContractAmount})`,
       newValue: newProject,
     });
 
     await revalidateAccountsPaths(projectId);
     revalidatePath('/projects');
     revalidatePath('/operations');
+    revalidatePath('/accounts/milestones');
+    revalidatePath('/admin/milestones');
 
     return { success: true, data: normalizeData(newProject) };
   } catch (error: any) {
@@ -243,8 +335,6 @@ export async function getSalesPipelineAction(): Promise<ActionResponse> {
     const PIPELINE_STATUSES = [
       'lead_created',
       'requirement_gathering',
-      'quotation_requested',
-      'quotation_sent',
       'payment_pending',
     ];
 
@@ -519,7 +609,7 @@ export async function getProjectsListAction(params?: ProjectsListQuery): Promise
       if (client) query = query.eq('client_name', client);
       if (status) {
         if (role === 'sales' && status === 'send_to_accountant') {
-          query = query.in('status', ['quotation_requested', 'quotation_sent', 'payment_pending']);
+          query = query.eq('status', 'payment_pending');
         } else {
           query = query.eq('status', status);
         }
@@ -662,29 +752,17 @@ export async function adminHardDeleteProjectAction(projectId: string): Promise<A
     }
 
     // 2. Delete database records in order
-    const { data: quotations } = await supabaseAdmin
-      .from('quotations')
-      .select('id')
-      .eq('project_id', projectId);
-    
-    if (quotations && quotations.length > 0) {
-      const quoteIds = quotations.map((q: any) => q.id);
-      await supabaseAdmin.from('quotation_versions').delete().in('quotation_id', quoteIds);
-    }
-
     const tables = [
       'workflow_history',
       'activity_logs',
       'tasks',
       'files',
-      'quotations',
       'invoices',
       'project_milestones',
       'payments',
       'project_finances',
       'project_assignments',
       'project_accounts_owners',
-      'cad_revisions',
       'field_reports',
       'project_visits',
       'delivery_checklist',

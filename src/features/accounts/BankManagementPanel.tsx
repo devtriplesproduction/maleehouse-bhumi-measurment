@@ -83,7 +83,7 @@ export function BankManagementPanel() {
     <div className="space-y-8 font-sans">
       <PageHeader
         title="Bank Accounts"
-        subtitle="Configure default and secondary bank accounts for invoice and quotation generation."
+        subtitle="Configure default and secondary bank accounts for invoice and client payment processing."
         icon={Landmark}
         actions={
           !loading && (
@@ -242,7 +242,7 @@ export function BankManagementPanel() {
                 No Bank Accounts Found
               </h3>
               <p className="text-sm font-medium text-slate-500 max-w-sm mb-8">
-                Add your first bank account to display payment details clearly on your quotations and invoices.
+                Add your first bank account to display payment details clearly on your invoices.
               </p>
               <button
                 onClick={() => setEditingBank({ 
@@ -353,7 +353,7 @@ export function BankManagementPanel() {
                     value={editingBank.account_usage || ""}
                     onChange={(e) => setEditingBank({ ...editingBank, account_usage: e.target.value })}
                     className="w-full h-11 px-4 rounded-xl border border-slate-200 dark:border-white/10 bg-white/50 dark:bg-black/20 text-sm font-semibold text-slate-900 dark:text-white focus:bg-white dark:focus:bg-[#0f1526] focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all shadow-sm"
-                    placeholder="e.g. Operations, Payroll, Quotations"
+                    placeholder="e.g. Operations, Payroll, Billing"
                   />
                 </div>
 

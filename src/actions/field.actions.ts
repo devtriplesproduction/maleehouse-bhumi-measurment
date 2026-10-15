@@ -139,7 +139,7 @@ export async function submitQuickReportAction(projectId: string, formData: FormD
 
   const ext = file.name.split('.').pop()?.toLowerCase() || '';
   if (!ALLOWED_EXTENSIONS.includes(ext)) {
-    return { success: false, error: "Invalid file type. Please upload a supported document, image, CAD, or archive format." };
+    return { success: false, error: "Invalid file type. Please upload a supported document, image, drawing, or archive format." };
   }
   
   if (file.size > MAX_FILE_SIZE) {
@@ -282,26 +282,40 @@ function generateId(prefix: string) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
 }
 
-export async function createMaterialRequestAction(projectId: string, itemName: string, quantity: number, notes: string) {
+/**
+ * Assign material / equipment to a project (Engineer / Admin workflow).
+ */
+export async function assignMaterialToProjectAction(
+  projectId: string,
+  itemName: string,
+  quantity: number,
+  notes?: string,
+  assignedToUserId?: string
+) {
   const profile = await getUserProfileAction();
   if (!profile) return { success: false, error: "Unauthorized" };
+  if (!["admin", "engineer"].includes(profile.role)) {
+    return { success: false, error: "Unauthorized. Engineers and Admins only." };
+  }
 
   const supabase: any = await createClient();
-  const requestId = generateId("mat");
+  const materialId = generateId("mat");
 
-  const { error } = await supabase.from("material_requests").insert({
-    id: requestId,
+  const { data: inserted, error } = await supabase.from("material_requests").insert({
+    id: materialId,
     project_id: projectId,
     requested_by: profile.id,
+    assigned_by: profile.id,
+    assigned_to: assignedToUserId || null,
     item_name: itemName,
-    quantity,
-    notes,
-    status: "requested",
+    quantity: Math.max(1, Number(quantity) || 1),
+    notes: notes || null,
+    status: "assigned",
     created_at: new Date().toISOString()
-  });
+  }).select().single();
 
   if (error) {
-    console.error("Error creating material request:", error);
+    console.error("Error assigning material to project:", error);
     return { success: false, error: error.message };
   }
 
@@ -310,40 +324,134 @@ export async function createMaterialRequestAction(projectId: string, itemName: s
     id: generateId("act"),
     project_id: projectId,
     user_id: profile.id,
-    action: "MATERIAL_REQUESTED",
-    details: { item: itemName, quantity, request_id: requestId },
+    action: "MATERIAL_ASSIGNED",
+    details: { item: itemName, quantity, assigned_to: assignedToUserId, material_id: materialId },
     created_at: new Date().toISOString(),
   });
 
-  // Notify admins and engineers
-  const { data: project } = await supabase.from('projects').select('name').eq('id', projectId).single();
-  const projectName = project?.name || projectId;
-
-  const { data: admins } = await supabase.from('profiles').select('id').in('role', ['admin', 'engineer']);
-  if (admins && admins.length > 0) {
-    const payloads = admins.map((admin: any) => ({
-      userId: admin.id,
-      title: "📦 New Material Request",
-      message: `${profile.first_name || 'A user'} requested ${quantity}x ${itemName} for "${projectName}".`,
-      type: "assignment" as const,
+  // Notify assigned user if specified
+  if (assignedToUserId) {
+    const { data: project } = await supabase.from('projects').select('name').eq('id', projectId).single();
+    const projectName = project?.name || projectId;
+    await insertNotification({
+      userId: assignedToUserId,
+      title: "📦 Equipment & Material Assigned",
+      message: `You were assigned ${quantity}x ${itemName} for project "${projectName}".`,
+      type: "assignment",
       relatedProjectId: projectId
-    }));
-    await insertNotificationsBatch(payloads);
+    });
   }
 
   const { revalidatePath } = await import("next/cache");
+  revalidatePath(`/projects/${projectId}`);
   revalidatePath("/field");
   revalidatePath("/operations");
+  revalidatePath("/engineer");
 
-  return { success: true, message: "Material requested successfully" };
+  return { success: true, message: "Material assigned to project", data: inserted };
 }
 
-export async function getMyMaterialRequestsAction() {
+/**
+ * Mark a single assigned material / equipment as submitted back to the company.
+ */
+export async function submitMaterialToCompanyAction(materialId: string, notes?: string) {
   const profile = await getUserProfileAction();
   if (!profile) return { success: false, error: "Unauthorized" };
 
   const supabase: any = await createClient();
-  
+  const { data: material } = await supabase.from("material_requests").select("*").eq("id", materialId).single();
+  if (!material) return { success: false, error: "Material not found" };
+
+  const updatedNotes = notes
+    ? (material.notes ? `${material.notes} | Returned: ${notes}` : `Returned: ${notes}`)
+    : material.notes;
+
+  const { error } = await supabase.from("material_requests").update({
+    status: "submitted",
+    submitted_at: new Date().toISOString(),
+    submitted_by: profile.id,
+    notes: updatedNotes
+  }).eq("id", materialId);
+
+  if (error) {
+    console.error("Error submitting material to company:", error);
+    return { success: false, error: error.message };
+  }
+
+  // Log activity
+  await supabase.from('activity_logs').insert({
+    id: generateId("act"),
+    project_id: material.project_id,
+    user_id: profile.id,
+    action: "MATERIAL_SUBMITTED_TO_COMPANY",
+    details: { item: material.item_name, quantity: material.quantity, material_id: materialId },
+    created_at: new Date().toISOString(),
+  });
+
+  const { revalidatePath } = await import("next/cache");
+  revalidatePath(`/projects/${material.project_id}`);
+  revalidatePath("/field");
+  revalidatePath("/operations");
+  revalidatePath("/engineer");
+
+  return { success: true, message: `Material "${material.item_name}" submitted to company.` };
+}
+
+/**
+ * Mark all assigned materials for a project as submitted back to the company.
+ */
+export async function submitAllProjectMaterialsAction(projectId: string) {
+  const profile = await getUserProfileAction();
+  if (!profile) return { success: false, error: "Unauthorized" };
+  if (!["admin", "engineer"].includes(profile.role)) {
+    return { success: false, error: "Unauthorized. Engineers and Admins only." };
+  }
+
+  const supabase: any = await createClient();
+  const now = new Date().toISOString();
+
+  const { error } = await supabase
+    .from("material_requests")
+    .update({
+      status: "submitted",
+      submitted_at: now,
+      submitted_by: profile.id
+    })
+    .eq("project_id", projectId)
+    .in("status", ["assigned", "requested"]);
+
+  if (error) {
+    console.error("Error submitting all materials:", error);
+    return { success: false, error: error.message };
+  }
+
+  // Log activity
+  await supabase.from('activity_logs').insert({
+    id: generateId("act"),
+    project_id: projectId,
+    user_id: profile.id,
+    action: "ALL_MATERIALS_SUBMITTED_TO_COMPANY",
+    details: { project_id: projectId },
+    created_at: now,
+  });
+
+  const { revalidatePath } = await import("next/cache");
+  revalidatePath(`/projects/${projectId}`);
+  revalidatePath("/field");
+  revalidatePath("/operations");
+  revalidatePath("/engineer");
+
+  return { success: true, message: "All materials marked as submitted to company." };
+}
+
+/**
+ * Fetch all materials assigned to a given project.
+ */
+export async function getProjectMaterialsAction(projectId: string) {
+  const profile = await getUserProfileAction();
+  if (!profile) return { success: false, error: "Unauthorized", data: [] };
+
+  const supabase: any = await createClient();
   const { data, error } = await supabase
     .from("material_requests")
     .select(`
@@ -352,11 +460,100 @@ export async function getMyMaterialRequestsAction() {
       quantity,
       status,
       notes,
+      assigned_to,
+      assigned_by,
+      submitted_at,
+      submitted_by,
       created_at,
+      profiles:assigned_to ( first_name, last_name, role ),
+      assigner:assigned_by ( first_name, last_name )
+    `)
+    .eq("project_id", projectId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching project materials:", error);
+    return { success: false, error: error.message, data: [] };
+  }
+
+  const formatted = (data || []).map((m: any) => ({
+    id: m.id,
+    item: m.item_name,
+    quantity: m.quantity,
+    status: m.status,
+    notes: m.notes,
+    assigned_to: m.assigned_to,
+    assigned_to_name: m.profiles ? `${m.profiles.first_name || ''} ${m.profiles.last_name || ''}`.trim() : null,
+    assigned_by_name: m.assigner ? `${m.assigner.first_name || ''} ${m.assigner.last_name || ''}`.trim() : null,
+    submitted_at: m.submitted_at,
+    created_at: m.created_at
+  }));
+
+  return { success: true, data: normalizeData(formatted) };
+}
+
+/**
+ * Remove an assigned material.
+ */
+export async function deleteProjectMaterialAction(materialId: string, projectId: string) {
+  const profile = await getUserProfileAction();
+  if (!profile || !["admin", "engineer"].includes(profile.role)) {
+    return { success: false, error: "Unauthorized" };
+  }
+
+  const supabase: any = await createClient();
+  const { error } = await supabase.from("material_requests").delete().eq("id", materialId);
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  const { revalidatePath } = await import("next/cache");
+  revalidatePath(`/projects/${projectId}`);
+  revalidatePath("/field");
+  revalidatePath("/engineer");
+
+  return { success: true, message: "Material assignment removed." };
+}
+
+export async function createMaterialRequestAction(projectId: string, itemName: string, quantity: number, notes: string) {
+  // Alias to assignMaterialToProjectAction for backward compatibility
+  return assignMaterialToProjectAction(projectId, itemName, quantity, notes);
+}
+
+export async function getMyMaterialRequestsAction() {
+  const profile = await getUserProfileAction();
+  if (!profile) return { success: false, error: "Unauthorized" };
+
+  const supabase: any = await createClient();
+  
+  // Fetch materials assigned to user's projects or assigned to user directly
+  const { data: assignments } = await supabase
+    .from('project_assignments')
+    .select('project_id')
+    .eq('user_id', profile.id);
+  const projectIds = (assignments || []).map((a: any) => a.project_id);
+
+  let query = supabase
+    .from("material_requests")
+    .select(`
+      id,
+      item_name,
+      quantity,
+      status,
+      notes,
+      created_at,
+      submitted_at,
       projects ( name )
     `)
-    .eq("requested_by", profile.id)
     .order("created_at", { ascending: false });
+
+  if (projectIds.length > 0) {
+    query = query.or(`assigned_to.eq.${profile.id},requested_by.eq.${profile.id},project_id.in.(${projectIds.join(',')})`);
+  } else {
+    query = query.or(`assigned_to.eq.${profile.id},requested_by.eq.${profile.id}`);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error("Error fetching material requests:", error);
@@ -370,6 +567,7 @@ export async function getMyMaterialRequestsAction() {
     status: req.status,
     notes: req.notes,
     project_name: req.projects?.name || "Unknown Project",
+    submitted_at: req.submitted_at,
     created_at: req.created_at
   }));
 
@@ -387,13 +585,16 @@ export async function getAllMaterialRequestsAction() {
     .from("material_requests")
     .select(`
       id,
+      project_id,
       item_name,
       quantity,
       status,
       notes,
       created_at,
-      projects ( name ),
-      profiles ( first_name, last_name )
+      submitted_at,
+      projects ( id, name ),
+      profiles:assigned_to ( first_name, last_name ),
+      requester:requested_by ( first_name, last_name )
     `)
     .order("created_at", { ascending: false });
 
@@ -404,19 +605,22 @@ export async function getAllMaterialRequestsAction() {
 
   const formattedRequests = (data || []).map((req: any) => ({
     id: req.id,
+    project_id: req.project_id || req.projects?.id,
     item: req.item_name,
     quantity: req.quantity,
     status: req.status,
     notes: req.notes,
     project_name: req.projects?.name || "Unknown Project",
-    requested_by_name: `${req.profiles?.first_name || ""} ${req.profiles?.last_name || ""}`.trim() || "Unknown User",
+    assigned_to_name: req.profiles ? `${req.profiles?.first_name || ""} ${req.profiles?.last_name || ""}`.trim() : null,
+    requested_by_name: req.requester ? `${req.requester?.first_name || ""} ${req.requester?.last_name || ""}`.trim() : "Unknown User",
+    submitted_at: req.submitted_at,
     created_at: req.created_at
   }));
 
   return { success: true, data: normalizeData(formattedRequests) };
 }
 
-export async function updateMaterialRequestStatusAction(requestId: string, newStatus: "approved" | "delivered" | "rejected") {
+export async function updateMaterialRequestStatusAction(requestId: string, newStatus: "approved" | "delivered" | "rejected" | "submitted" | "assigned") {
   const profile = await getUserProfileAction();
   if (!profile || !["admin", "engineer"].includes(profile.role)) {
     return { success: false, error: "Unauthorized" };
@@ -424,26 +628,34 @@ export async function updateMaterialRequestStatusAction(requestId: string, newSt
 
   const supabase: any = await createClient();
   
-  // Get request to notify the requester
   const { data: request } = await supabase.from("material_requests").select("*").eq("id", requestId).single();
   if (!request) return { success: false, error: "Request not found" };
 
-  const { error } = await supabase.from("material_requests").update({ status: newStatus }).eq("id", requestId);
+  const updatePayload: any = { status: newStatus };
+  if (newStatus === "submitted") {
+    updatePayload.submitted_at = new Date().toISOString();
+    updatePayload.submitted_by = profile.id;
+  }
+
+  const { error } = await supabase.from("material_requests").update(updatePayload).eq("id", requestId);
   if (error) {
     console.error("Error updating material request:", error);
     return { success: false, error: error.message };
   }
 
-  // Notify the field worker
-  await insertNotification({
-    userId: request.requested_by,
-    title: `📦 Material Request ${newStatus}`,
-    message: `Your request for ${request.quantity}x ${request.item_name} has been ${newStatus}.`,
-    type: "assignment",
-    relatedProjectId: request.project_id
-  });
+  // Notify the assigned worker or requester
+  const notifyTarget = request.assigned_to || request.requested_by;
+  if (notifyTarget) {
+    await insertNotification({
+      userId: notifyTarget,
+      title: `📦 Material ${newStatus === 'submitted' ? 'Submitted in Company' : newStatus}`,
+      message: `Material ${request.quantity}x ${request.item_name} marked as ${newStatus}.`,
+      type: "assignment",
+      relatedProjectId: request.project_id
+    });
+  }
 
-  return { success: true, message: `Material request marked as ${newStatus}` };
+  return { success: true, message: `Material marked as ${newStatus}` };
 }
 
 export async function getFieldMetricsAction(): Promise<any> {
@@ -539,7 +751,7 @@ export async function getPendingMaterialRequestsCountAction() {
     const { count, error } = await supabase
       .from('material_requests')
       .select('*', { count: 'exact', head: true })
-      .eq('status', 'pending');
+      .in('status', ['assigned', 'requested']);
     if (error) throw error;
     return { success: true, data: count || 0 };
   } catch (err: any) {

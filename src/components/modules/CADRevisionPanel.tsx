@@ -85,10 +85,10 @@ export function CADRevisionPanel({
   }, [revisions, bypassActive]);
 
   const isEngineer = ["engineer", "admin"].includes(userRole);
-  const isCAD = ["cad", "admin"].includes(userRole);
+  const isCAD = ["cad", "admin", "engineer", "field"].includes(userRole);
   const latestRevision = localRevisions[0];
   
-  const rejectedCount = localRevisions.filter((r: any) => r.status === "rejected").length;
+  const rejectedCount = localRevisions.filter((r: any) => r.status === "rejected" || r.status === "rework_requested").length;
   const isEscalationHold = rejectedCount >= 10 && !localBypass;
   const hasEscalatedRevisions = localRevisions.length >= 10 && localRevisions.some((r: any) => r.status === "pending_review");
 
@@ -105,7 +105,7 @@ export function CADRevisionPanel({
         if (data) {
           setLocalRevisions(prev => prev.map((r: any) => r.id === data.id ? { ...r, ...data } : r));
         }
-        toast.success("CAD revision approved.");
+        toast.success("Revision approved.");
         setActiveAction(null);
         setReviewNote("");
       } else {
@@ -127,7 +127,7 @@ export function CADRevisionPanel({
         if (data) {
           setLocalRevisions(prev => prev.map((r: any) => r.id === data.id ? { ...r, ...data } : r));
         }
-        toast.success("CAD revision rejected. CAD team notified.");
+        toast.success("Revision rework requested. Team notified.");
         setActiveAction(null);
         setReviewNote("");
       } else {
@@ -145,7 +145,7 @@ export function CADRevisionPanel({
           if (result.data?.bypass_active) {
             setLocalBypass(result.data.bypass_active);
           }
-          toast.success("CAD Escalation hold bypassed successfully.");
+          toast.success("Escalation hold bypassed successfully.");
         } else {
           toast.error(result?.error || "Bypass failed.");
         }
@@ -163,7 +163,7 @@ export function CADRevisionPanel({
       <div className="flex items-center justify-between mb-5">
         <h3 className="text-sm font-semibold text-slate-800 dark:text-white tracking-tight flex items-center gap-2">
           <PenTool className="w-4 h-4 text-indigo-500" />
-          CAD Revision History
+          Revision History
         </h3>
         <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-white/5 text-slate-500 dark:text-slate-400 uppercase tracking-wider">
           {localRevisions.length} version{localRevisions.length !== 1 ? "s" : ""}
@@ -179,8 +179,8 @@ export function CADRevisionPanel({
             <div className="space-y-1">
               <p className="text-xs font-black text-white uppercase tracking-widest">REVISION LIMIT REACHED (Escalation Hold Active)</p>
               <p className="text-sm text-slate-400 leading-normal">
-                This project has reached 10 CAD rejections and is currently locked under Escalation Hold.
-                Further prototype uploads are disabled. An Admin or Lead Engineer must verify alignment parameters first.
+                This project has reached 10 rejections and is currently locked under Escalation Hold.
+                Further uploads are disabled. An Admin or Lead Engineer must verify alignment parameters first.
               </p>
             </div>
           </div>
@@ -203,7 +203,7 @@ export function CADRevisionPanel({
           <div className="space-y-0.5">
             <p className="text-xs font-bold text-white uppercase tracking-wider">REVISION LIMIT REACHED (Escalated Review Active)</p>
             <p className="text-sm text-slate-400 leading-normal">
-              This project has reached V10 drafting limits. Escalated review has been triggered for Admins and Lead Engineers.
+              This project has reached drafting limits. Escalated review has been triggered for Admins and Lead Engineers.
             </p>
           </div>
         </div>
@@ -215,9 +215,9 @@ export function CADRevisionPanel({
           <div className="w-12 h-12 rounded-full bg-blue-500/5 flex items-center justify-center border border-blue-500/10">
             <FileText className="w-5 h-5 text-blue-500/30" />
           </div>
-          <p className="text-sm font-bold text-slate-500">No CAD revisions yet</p>
+          <p className="text-sm font-bold text-slate-500">No revisions yet</p>
           <p className="text-xs text-slate-600">
-            {isCAD ? "Submit the first prototype above." : "Waiting for CAD team submission."}
+            No revisions or rework records logged yet.
           </p>
         </div>
       ) : (
@@ -261,7 +261,7 @@ export function CADRevisionPanel({
                           {rev.status === "approved" ? "Final Approved" : cfg.label}
                         </span>
                       </div>
-                      <p className="text-sm text-slate-400 mt-0.5">{rev.files?.[0]?.name || 'Prototype Document'}</p>
+                      <p className="text-sm text-slate-400 mt-0.5">{rev.title || rev.files?.[0]?.name || (rev.revision_type === 'survey' ? 'Field Survey Data' : 'Deliverable Document')}</p>
                     </div>
                   </div>
 

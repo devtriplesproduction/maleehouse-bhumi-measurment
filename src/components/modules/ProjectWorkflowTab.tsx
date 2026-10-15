@@ -118,8 +118,6 @@ export default function ProjectWorkflowTab({
   const getStageIndex = (status: string): number => {
     switch (status) {
       case 'lead_created':
-      case 'quotation_requested':
-      case 'quotation_sent':
       case 'payment_pending':
       case 'payment_done':
       case 'project_created':

@@ -14,7 +14,7 @@ import { motion } from "framer-motion";
 const stages = [
   { id: "lead", name: "Lead", icon: Users, color: "bg-blue-500", x: 15, y: 25 },
   { id: "eng", name: "Engineer", icon: Cpu, color: "bg-indigo-500", x: 80, y: 25 },
-  { id: "cad", name: "CAD", icon: Layers, color: "bg-purple-500", x: 15, y: 50 },
+  { id: "survey", name: "Survey", icon: Layers, color: "bg-purple-500", x: 15, y: 50 },
   { id: "rev", name: "Review", icon: Search, color: "bg-amber-500", x: 80, y: 50 },
   { id: "field", name: "Field", icon: MapPin, color: "bg-emerald-500", x: 15, y: 75 },
   { id: "sync", name: "Final Sync", icon: Share2, color: "bg-slate-700", x: 80, y: 75 },
@@ -44,7 +44,7 @@ export function AuthIllustration() {
           <span className="text-indigo-600">Malee House lifecycle.</span>
         </h2>
         <p className="text-slate-500 text-[13px] font-medium max-w-[340px]">
-          A unified workspace for leads, engineering, CAD, and field operations.
+          A unified workspace for leads, engineering, deliverables, and field operations.
         </p>
       </div>
 

@@ -38,7 +38,6 @@ interface ProjectsTableProps {
 
 const statusConfig: Record<string, { label: string; dotColor: string; badgeClass: string }> = {
   lead_created:     { label: 'Lead',           dotColor: 'bg-indigo-500',  badgeClass: 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-500/20' },
-  quotation_sent:   { label: 'Quoted',          dotColor: 'bg-blue-500',    badgeClass: 'bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/20' },
   payment_pending:  { label: 'Awaiting Payment',dotColor: 'bg-amber-500',   badgeClass: 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20' },
   payment_done:     { label: 'Paid',            dotColor: 'bg-emerald-500', badgeClass: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20' },
   project_created:  { label: 'Started',         dotColor: 'bg-purple-500',  badgeClass: 'bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/20' },
@@ -326,7 +325,6 @@ export function ProjectsTable({ initialPage, userRole = 'admin' }: ProjectsTable
                           const isLead = ['lead_created', 'requirement_gathering', 'follow_up_pending'].includes(
                             project.status
                           );
-                          const isPushed = project.status === 'quotation_requested';
                           if (isLead) {
                             return (
                               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border bg-slate-100 dark:bg-white/5 text-slate-500 border-slate-200 dark:border-white/10">
@@ -335,18 +333,10 @@ export function ProjectsTable({ initialPage, userRole = 'admin' }: ProjectsTable
                               </span>
                             );
                           }
-                          if (isPushed) {
-                            return (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20">
-                                <span className="text-[10px] font-bold mr-0.5 text-blue-500">✓</span>
-                                Pushed to Accounts
-                              </span>
-                            );
-                          }
                           return (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border bg-emerald-500/10 text-emerald-600 dark:text-emerald-450 border-emerald-500/20">
-                              <span className="text-[10px] font-bold mr-0.5 text-emerald-500">✓✓</span>
-                              Quotation Sent
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20">
+                              <span className="text-[10px] font-bold mr-0.5 text-emerald-500">✓</span>
+                              Payment Pending
                             </span>
                           );
                         })()

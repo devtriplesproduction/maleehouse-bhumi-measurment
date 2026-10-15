@@ -30,8 +30,8 @@ export function SalesStatsOverview({ leads = [] }: SalesStatsOverviewProps) {
       return new Date(l.follow_up_date).toDateString() === todayStr;
     }).length;
 
-    const pendingQuotes = leads.filter(l => 
-      l.status === 'quotation_requested' || l.status === 'quotation_sent'
+    const pendingPayments = leads.filter(l => 
+      l.status === 'payment_pending'
     ).length;
 
     return [
@@ -52,12 +52,12 @@ export function SalesStatsOverview({ leads = [] }: SalesStatsOverviewProps) {
         description: 'Scheduled reminders'
       },
       { 
-        label: 'Pending Quotations', 
-        value: pendingQuotes, 
-        change: pendingQuotes > 0 ? 'Action Needed' : '', 
+        label: 'Payment Pending', 
+        value: pendingPayments, 
+        change: pendingPayments > 0 ? 'Action Needed' : '', 
         icon: Clock, 
-        color: 'text-blue-500',
-        description: 'Awaiting submission'
+        color: 'text-emerald-500',
+        description: 'Awaiting advance milestone'
       }
     ];
   }, [leads]);

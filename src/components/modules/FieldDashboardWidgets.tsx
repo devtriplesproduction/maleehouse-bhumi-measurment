@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { Clock, MapPin, Package, Upload, CheckCircle2, AlertCircle, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
-import { markVisitCompletedAction, createMaterialRequestAction } from "@/actions/field.actions";
+import { markVisitCompletedAction, createMaterialRequestAction, submitMaterialToCompanyAction } from "@/actions/field.actions";
 export function AttendanceWidget() {
   const [checkedIn, setCheckedIn] = useState(false);
   const [time, setTime] = useState<string | null>(null);
@@ -114,117 +114,91 @@ export function DailyVisitsWidget({ visits }: { visits: any[] }) {
 
 export function MaterialRequirementsWidget({ materials, activeProjects = [] }: { materials: any[], activeProjects?: any[] }) {
   const router = useRouter();
-  const [submitting, setSubmitting] = useState(false);
-  const [projectId, setProjectId] = useState(activeProjects[0]?.id || "");
-  const [item, setItem] = useState("");
-  const [qty, setQty] = useState("");
-  const [notes, setNotes] = useState("");
-  const [showForm, setShowForm] = useState(false);
+  const [submittingId, setSubmittingId] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!projectId || !item || !qty) return;
-    setSubmitting(true);
-    const res = await createMaterialRequestAction(projectId, item, Number(qty), notes);
-    setSubmitting(false);
+  const handleSubmitToCompany = async (id: string) => {
+    setSubmittingId(id);
+    const res = await submitMaterialToCompanyAction(id);
+    setSubmittingId(null);
     if (res.success) {
-      setItem("");
-      setQty("");
-      setNotes("");
-      setShowForm(false);
       router.refresh();
     } else {
-      alert("Failed to submit request: " + res.error);
+      alert("Failed to submit material: " + res.error);
     }
   };
 
+  const inPossessionCount = materials.filter(m => m.status === 'assigned' || m.status === 'requested').length;
+
   return (
-    <div className="glass-card border-white/10 p-5 space-y-4">
+    <div className="glass-card border-slate-200/60 dark:border-white/10 p-5 space-y-4 rounded-3xl shadow-sm">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Package className="w-5 h-5 text-indigo-500" />
-          <h3 className="font-bold text-slate-900 dark:text-white">Material Requirements</h3>
-        </div>
-        <button 
-          onClick={() => setShowForm(!showForm)}
-          className="text-xs font-bold text-indigo-500 hover:underline"
-        >
-          {showForm ? "Cancel" : "+ Request"}
-        </button>
-      </div>
-      
-      {showForm && (
-        <form onSubmit={handleSubmit} className="bg-slate-50 dark:bg-white/5 p-4 rounded-xl space-y-3 border border-slate-100 dark:border-white/5">
-          {activeProjects.length > 0 ? (
-            <select 
-              value={projectId} 
-              onChange={(e) => setProjectId(e.target.value)}
-              className="w-full text-xs p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 focus:outline-none focus:border-indigo-500"
-              required
-            >
-              <option value="" disabled>Select Project</option>
-              {activeProjects.map((p: any) => (
-                <option key={p.id} value={p.id}>{p.name}</option>
-              ))}
-            </select>
-          ) : (
-            <p className="text-xs text-rose-500 font-bold">No active projects assigned to you.</p>
-          )}
-
-          <div className="flex gap-2">
-            <input 
-              type="text" 
-              placeholder="Item Name" 
-              value={item} 
-              onChange={(e) => setItem(e.target.value)}
-              className="flex-1 text-xs p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 focus:outline-none focus:border-indigo-500"
-              required
-            />
-            <input 
-              type="number" 
-              placeholder="Qty" 
-              value={qty} 
-              onChange={(e) => setQty(e.target.value)}
-              className="w-20 text-xs p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 focus:outline-none focus:border-indigo-500"
-              min="1"
-              required
-            />
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+            <Package className="w-4 h-4" />
           </div>
-          <input 
-            type="text" 
-            placeholder="Notes (optional)" 
-            value={notes} 
-            onChange={(e) => setNotes(e.target.value)}
-            className="w-full text-xs p-2 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 focus:outline-none focus:border-indigo-500"
-          />
-          <button 
-            type="submit" 
-            disabled={submitting || activeProjects.length === 0}
-            className="w-full py-2 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg text-xs font-bold uppercase tracking-wider disabled:opacity-50"
-          >
-            {submitting ? "Submitting..." : "Submit Request"}
-          </button>
-        </form>
-      )}
+          <div>
+            <h3 className="font-bold text-sm text-slate-900 dark:text-white">Assigned Equipment & Materials</h3>
+            <p className="text-[10px] text-slate-400">Allocated for active fieldwork</p>
+          </div>
+        </div>
+        {inPossessionCount > 0 && (
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+            {inPossessionCount} in possession
+          </span>
+        )}
+      </div>
 
-      <div className="space-y-2 max-h-[250px] overflow-y-auto pr-2 custom-scrollbar">
+      <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
         {materials.length === 0 ? (
-          <p className="text-sm text-slate-500 py-4 text-center">No material requests.</p>
+          <div className="py-8 text-center text-xs text-slate-400">
+            <Package className="w-6 h-6 mx-auto mb-1.5 opacity-40" />
+            No equipment or materials currently assigned to your projects.
+          </div>
         ) : (
-          materials.map((mat, idx) => (
-            <div key={idx} className="p-3 rounded-xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 flex items-center justify-between">
-              <div>
-                <p className="text-sm font-bold text-slate-900 dark:text-white">{mat.item}</p>
-                <p className="text-xs text-slate-500">{mat.project_name} &bull; Qty: {mat.quantity}</p>
+          materials.map((mat, idx) => {
+            const isSubmitted = mat.status === 'submitted' || mat.status === 'returned';
+            return (
+              <div
+                key={mat.id || idx}
+                className="p-3 rounded-2xl bg-white dark:bg-slate-900/50 border border-slate-200/70 dark:border-white/5 space-y-2 transition-all hover:border-indigo-500/30"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{mat.item}</p>
+                    <p className="text-[11px] text-slate-400">{mat.project_name} &bull; Qty: <strong className="text-slate-700 dark:text-slate-300">{mat.quantity}</strong></p>
+                    {mat.notes && (
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400 italic mt-0.5 truncate">{mat.notes}</p>
+                    )}
+                  </div>
+                  <div className="shrink-0">
+                    {isSubmitted ? (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" />
+                        In Company
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        In Field
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {!isSubmitted && (
+                  <button
+                    type="button"
+                    disabled={submittingId === mat.id}
+                    onClick={() => handleSubmitToCompany(mat.id)}
+                    className="w-full py-1.5 px-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-bold transition disabled:opacity-50 flex items-center justify-center gap-1 cursor-pointer"
+                  >
+                    <CheckCircle2 className="w-3 h-3" />
+                    {submittingId === mat.id ? "Submitting..." : "Submit to Company"}
+                  </button>
+                )}
               </div>
-              <div className="flex items-center gap-1">
-                {mat.status === 'approved' && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
-                {mat.status === 'requested' && <AlertCircle className="w-4 h-4 text-amber-500" />}
-                {mat.status === 'delivered' && <Package className="w-4 h-4 text-indigo-500" />}
-                <span className="text-[10px] uppercase font-bold text-slate-400">{mat.status}</span>
-              </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>

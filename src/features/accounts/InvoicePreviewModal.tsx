@@ -31,7 +31,7 @@ export function InvoicePreviewModal({ invoice, companySettings, onClose, onRefre
     setMounted(true);
     setDetailedInvoice(invoice);
     
-    // Fetch complete invoice data with project payments/quotations if not already present
+    // Fetch complete invoice data with project payments if not already present
     if (invoice?.id && (!invoice.projects?.payments || invoice.projects?.payments.length === 0)) {
       getInvoiceByIdAction(invoice.id).then(res => {
         if (res && res.success && res.data) {
@@ -72,18 +72,8 @@ export function InvoicePreviewModal({ invoice, companySettings, onClose, onRefre
   const totalAmount = Number(activeInvoice.total_amount);
   const remainingAmount = Math.max(0, totalAmount - amountPaid);
 
-  let projectBudget = Number(activeInvoice.projects?.budget) || 0;
-  if (projectBudget === 0 && activeInvoice.projects?.quotations && activeInvoice.projects.quotations.length > 0) {
-    const approvedQuotation = activeInvoice.projects.quotations.find((q: any) => q.status?.toLowerCase() === 'approved');
-    if (approvedQuotation) {
-      projectBudget = Number(approvedQuotation.total_amount);
-    } else {
-      projectBudget = Math.max(...activeInvoice.projects.quotations.map((q: any) => Number(q.total_amount)));
-    }
-  }
-  
-  // Extract GST type from the active quotation (assuming the first one or the one with client_details)
-  const gstType = activeInvoice.projects?.quotations?.[0]?.client_details?.gst_type || 'CGST_SGST';
+  const projectBudget = Number(activeInvoice.projects?.budget) || 0;
+  const gstType: string = 'CGST_SGST';
   const projectPayments = activeInvoice.projects?.payments || [];
   const projectVerifiedPayments = projectPayments.filter((p: any) => p.status === 'verified' || p.status === 'paid');
   let projectAmountPaid = projectVerifiedPayments.reduce((sum: number, p: any) => sum + Number(p.amount), 0);

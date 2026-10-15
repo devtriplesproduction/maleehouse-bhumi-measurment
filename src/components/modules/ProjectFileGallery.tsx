@@ -23,10 +23,8 @@ interface ProjectFileGalleryProps {
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
-  quotation: 'Quotations',
   receipt: 'Receipts',
   requirements: 'Project Requirements',
-  prototype: 'Prototypes',
   survey_data: 'Survey Data',
   final_file: 'Final Deliverables',
 };

@@ -7,10 +7,8 @@ export type Capability =
   | "finance:invoice" 
   | "finance:verify_payment" 
   | "finance:unfreeze"
-  | "ops:assign_cad" 
   | "ops:schedule_visit" 
   | "ops:escalate_revisions"
-  | "cad:upload" 
   | "field:report" 
   | "vault:overwrite";
 
@@ -18,13 +16,12 @@ const ROLE_CAPABILITIES: Record<Role, Capability[]> = {
   admin: [
     "project:create", "project:delete", "project:archive",
     "finance:invoice", "finance:verify_payment", "finance:unfreeze",
-    "ops:assign_cad", "ops:schedule_visit", "ops:escalate_revisions",
-    "cad:upload", "field:report", "vault:overwrite"
+    "ops:schedule_visit", "ops:escalate_revisions",
+    "field:report", "vault:overwrite"
   ],
-  sales: ["project:create", "ops:assign_cad"],
+  sales: ["project:create"],
   accountant: ["project:create", "finance:invoice", "finance:verify_payment", "finance:unfreeze"],
-  engineer: ["ops:assign_cad", "ops:schedule_visit", "ops:escalate_revisions", "cad:upload", "field:report"],
-  cad: ["cad:upload"],
+  engineer: ["ops:schedule_visit", "ops:escalate_revisions", "field:report"],
   field: ["field:report"],
   hr: [],
   developer: [],

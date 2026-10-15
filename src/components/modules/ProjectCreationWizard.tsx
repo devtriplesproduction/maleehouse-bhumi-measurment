@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm, FormProvider, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import PhoneInput from 'react-phone-number-input';
@@ -24,7 +24,9 @@ import {
   Loader2,
   Globe,
   Settings,
-  ShieldCheck
+  ShieldCheck,
+  IndianRupee,
+  Percent,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { createProjectSchema, type CreateProjectInput } from '@/validations/project.schema';
@@ -81,6 +83,7 @@ const STATE_OPTIONS = [
   { value: 'LD', label: 'Lakshadweep' },
   { value: 'PY', label: 'Puducherry' },
 ];
+
 
 const SERVICES_BY_CATEGORY: Record<string, string[]> = {
   "Plot measurement": [
@@ -172,6 +175,10 @@ export function ProjectCreationWizard() {
       site_type: 'residential',
       survey_requirements: '',
       services: [],
+      amount: 0,
+      gst_type: 'no_gst',
+      gst_rate: 0,
+      milestones: [],
     },
     mode: 'onChange',
   });
@@ -179,7 +186,6 @@ export function ProjectCreationWizard() {
   const { handleSubmit, formState: { errors }, watch, setValue, trigger } = methods;
 
   const selectedServices = watch('services') || [];
-
   const handleNext = async () => {
     let fieldsToValidate: (keyof ProjectFormValues)[] = [];
     if (step === 1) {
@@ -196,6 +202,25 @@ export function ProjectCreationWizard() {
 
   const handleBack = () => setStep((s) => s - 1);
 
+  const resetFormState = () => {
+    methods.reset({
+      name: '',
+      client_name: '',
+      gst_number: '',
+      phone: '',
+      email: '',
+      client_address: '',
+      state_code: 'MH',
+      site_type: 'residential',
+      survey_requirements: '',
+      services: [],
+      amount: 0,
+      gst_type: 'no_gst',
+      gst_rate: 0,
+      milestones: [],
+    });
+  };
+
   const onSubmit = async (data: ProjectFormValues) => {
     setIsSubmitting(true);
     try {
@@ -208,7 +233,7 @@ export function ProjectCreationWizard() {
         });
         setOpen(false);
         setStep(1);
-        methods.reset();
+        resetFormState();
       } else {
         toast.error('Unable to Create Project', {
           description: result.error || 'The system was unable to save the new project.',
@@ -228,7 +253,7 @@ export function ProjectCreationWizard() {
       setOpen(val);
       if (!val) {
         setStep(1);
-        methods.reset();
+        resetFormState();
       }
     }}>
       <DialogTrigger asChild>
@@ -324,7 +349,7 @@ export function ProjectCreationWizard() {
                       <div className="flex items-end justify-between">
                         <div className="space-y-1">
                           <span className={cn("text-xs font-medium px-2.5 py-1 rounded-full uppercase tracking-wider", c.bgLight, c.text)}>
-                            Step {step} of 3
+                            Step {step} of 4
                           </span>
                           <h3 className="text-3xl font-medium text-slate-800 dark:text-white tracking-tight pt-2 leading-none">
                             {STEPS.find((s: any) => s.id === step)?.title}
@@ -333,6 +358,11 @@ export function ProjectCreationWizard() {
                         {step === 2 && (
                           <span className={cn("text-xs font-medium px-2.5 py-1 rounded-full shrink-0 mb-1", c.bgLight, c.text)}>
                             {selectedServices.length} Selected
+                          </span>
+                        )}
+                        {step === 3 && (
+                          <span className={cn("text-xs font-medium px-2.5 py-1 rounded-full shrink-0 mb-1", c.bgLight, c.text)}>
+                            {(watch('milestones') || []).length} Milestones
                           </span>
                         )}
                       </div>
@@ -649,11 +679,143 @@ export function ProjectCreationWizard() {
                         </div>
                       )}
 
-                      {/* STEP 3: Review & Finalize */}
+                      {/* STEP 3: Commercial Amount & Review */}
                       {step === 3 && (
                         <div className="space-y-6">
 
-                          {/* Premium Recap Card in Liquid Glass theme */}
+                          {/* Commercial Amount & Payment Setup Card */}
+                          <div className="glass-card bg-slate-50/50 dark:bg-white/[0.02] border border-slate-200/60 dark:border-white/10 rounded-2xl p-6 space-y-5">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2.5">
+                                <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-semibold text-sm">
+                                  <IndianRupee className="w-4 h-4" />
+                                </div>
+                                <div>
+                                  <h4 className="text-sm font-semibold text-slate-800 dark:text-white">Commercial & Tax Details</h4>
+                                  <p className="text-[11px] text-slate-400">Configure base project value and applicable GST slab</p>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Row 1: Commercial Amount & GST Type Grid */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {/* Commercial Amount Input */}
+                              <div className="space-y-2">
+                                <label htmlFor="input-amount" className="text-xs font-medium uppercase tracking-widest text-slate-400 dark:text-slate-500 block px-1">
+                                  Base Commercial Amount (₹)
+                                </label>
+
+                                <div className="relative group">
+                                  <div className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-semibold text-sm">
+                                    ₹
+                                  </div>
+                                  <input
+                                    id="input-amount"
+                                    type="number"
+                                    min="0"
+                                    step="100"
+                                    value={watch('amount') ? watch('amount') : ''}
+                                    onChange={(e) => {
+                                      const val = e.target.value === '' ? 0 : Number(e.target.value);
+                                      setValue('amount', val, { shouldValidate: true });
+                                    }}
+                                    placeholder="Enter base amount (e.g. 50000)"
+                                    className={cn("glass-input h-14 !pl-16 font-semibold text-lg text-slate-800 dark:text-white placeholder:font-normal placeholder:text-slate-400/70", c.focusBorder, c.focusRing)}
+                                  />
+                                </div>
+                                {errors.amount && <p className="text-xs font-medium text-rose-500 uppercase tracking-wide px-1">{errors.amount.message}</p>}
+                              </div>
+
+                              {/* GST Type Selection */}
+                              <div className="space-y-2">
+                                <div className="flex items-center gap-1.5 px-1">
+                                  <Percent className="w-3.5 h-3.5 text-slate-400" />
+                                  <label className="text-xs font-medium uppercase tracking-widest text-slate-400 dark:text-slate-500 block">
+                                    GST Rate Bracket
+                                  </label>
+                                </div>
+                                <Controller
+                                  name="gst_type"
+                                  control={methods.control}
+                                  render={({ field }) => (
+                                    <Select
+                                      value={field.value || 'no_gst'}
+                                      onValueChange={(val) => {
+                                        field.onChange(val);
+                                        const rate = val === 'cgst_sgst_2_5' ? 5 : val === 'cgst_sgst_5' ? 10 : 0;
+                                        setValue('gst_rate', rate, { shouldValidate: true });
+                                      }}
+                                      placeholder="Select GST Type..."
+                                      buttonClassName={cn("glass-input h-14 font-medium text-sm text-slate-800 dark:text-white", c.focusBorder, c.focusRing)}
+                                    >
+                                      <SelectItem value="no_gst">No CGST / SGST (0% - Exempt)</SelectItem>
+                                      <SelectItem value="cgst_sgst_2_5">2.5% CGST + 2.5% SGST (5% Total)</SelectItem>
+                                      <SelectItem value="cgst_sgst_5">5% CGST + 5% SGST (10% Total)</SelectItem>
+                                    </Select>
+                                  )}
+                                />
+                                <p className="text-[11px] text-slate-400 px-1">
+                                  Tax slab for milestone receipts & settlement.
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Live Tax Calculation Summary */}
+                            {Number(watch('amount') || 0) > 0 && (
+                              <div className="p-4 rounded-xl bg-slate-100/70 dark:bg-white/[0.03] border border-slate-200/80 dark:border-white/10 space-y-2 text-xs">
+                                <div className="flex justify-between items-center text-slate-600 dark:text-slate-300">
+                                  <span className="font-medium">Base Commercial Value:</span>
+                                  <span className="font-semibold text-slate-800 dark:text-white">₹{Number(watch('amount') || 0).toLocaleString('en-IN')}</span>
+                                </div>
+                                {watch('gst_type') === 'cgst_sgst_2_5' && (
+                                  <>
+                                    <div className="flex justify-between items-center text-indigo-600 dark:text-indigo-400">
+                                      <span>CGST (2.5%):</span>
+                                      <span className="font-semibold">₹{Math.round(Number(watch('amount') || 0) * 0.025).toLocaleString('en-IN')}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-indigo-600 dark:text-indigo-400">
+                                      <span>SGST (2.5%):</span>
+                                      <span className="font-semibold">₹{Math.round(Number(watch('amount') || 0) * 0.025).toLocaleString('en-IN')}</span>
+                                    </div>
+                                  </>
+                                )}
+                                {watch('gst_type') === 'cgst_sgst_5' && (
+                                  <>
+                                    <div className="flex justify-between items-center text-indigo-600 dark:text-indigo-400">
+                                      <span>CGST (5.0%):</span>
+                                      <span className="font-semibold">₹{Math.round(Number(watch('amount') || 0) * 0.05).toLocaleString('en-IN')}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-indigo-600 dark:text-indigo-400">
+                                      <span>SGST (5.0%):</span>
+                                      <span className="font-semibold">₹{Math.round(Number(watch('amount') || 0) * 0.05).toLocaleString('en-IN')}</span>
+                                    </div>
+                                  </>
+                                )}
+                                {(!watch('gst_type') || watch('gst_type') === 'no_gst') && (
+                                  <div className="flex justify-between items-center text-emerald-600 dark:text-emerald-400">
+                                    <span>Tax Status:</span>
+                                    <span className="font-semibold">Exempt (No CGST / SGST)</span>
+                                  </div>
+                                )}
+                                <div className="pt-2 border-t border-slate-200 dark:border-white/10 flex justify-between items-center text-sm font-bold text-slate-900 dark:text-white">
+                                  <span>Total Agreed Contract Value:</span>
+                                  <span className="text-emerald-600 dark:text-emerald-400">
+                                    ₹{(
+                                      Number(watch('amount') || 0) +
+                                      (watch('gst_type') === 'cgst_sgst_2_5'
+                                        ? Math.round(Number(watch('amount') || 0) * 0.05)
+                                        : watch('gst_type') === 'cgst_sgst_5'
+                                        ? Math.round(Number(watch('amount') || 0) * 0.10)
+                                        : 0)
+                                    ).toLocaleString('en-IN')}
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+
+                          </div>
+
+                          {/* Premium Recap Card */}
                           <div className="glass-card bg-slate-50/50 dark:bg-white/[0.02] border border-slate-200/60 dark:border-white/10 rounded-2xl p-8 space-y-6 relative overflow-hidden shadow-xl">
                             <div className={cn("absolute top-0 right-0 w-48 h-48 blur-[80px] rounded-full pointer-events-none", c.glow)} />
 
@@ -662,7 +824,7 @@ export function ProjectCreationWizard() {
                               <h4 className="text-2xl font-medium tracking-tight text-slate-800 dark:text-white">{watch('name')}</h4>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-6 text-slate-600 dark:text-slate-300">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-6 text-slate-600 dark:text-slate-300">
                               <div className="space-y-1">
                                 <p className="text-xs font-medium text-slate-400 dark:text-slate-550 uppercase tracking-widest">Client Name</p>
                                 <p className="text-sm font-medium text-slate-800 dark:text-white">{watch('client_name')}</p>
@@ -689,6 +851,39 @@ export function ProjectCreationWizard() {
                                 <p className="text-xs font-medium text-slate-400 dark:text-slate-550 uppercase tracking-widest">Site Type</p>
                                 <p className="text-sm font-medium text-slate-800 dark:text-white capitalize">{watch('site_type')}</p>
                               </div>
+
+                              <div className="space-y-1">
+                                <p className="text-xs font-medium text-slate-400 dark:text-slate-550 uppercase tracking-widest">Base Value</p>
+                                <p className="text-sm font-semibold text-slate-800 dark:text-white">
+                                  ₹{Number(watch('amount') || 0).toLocaleString('en-IN')}
+                                </p>
+                              </div>
+
+                              <div className="space-y-1">
+                                <p className="text-xs font-medium text-slate-400 dark:text-slate-550 uppercase tracking-widest">GST Type</p>
+                                <p className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">
+                                  {watch('gst_type') === 'cgst_sgst_2_5'
+                                    ? '2.5% CGST + 2.5% SGST (5%)'
+                                    : watch('gst_type') === 'cgst_sgst_5'
+                                    ? '5% CGST + 5% SGST (10%)'
+                                    : 'No CGST / SGST (Exempt)'}
+                                </p>
+                              </div>
+
+                              <div className="space-y-1">
+                                <p className="text-xs font-medium text-slate-400 dark:text-slate-550 uppercase tracking-widest">Total Contract Value</p>
+                                <p className="text-base font-bold text-emerald-600 dark:text-emerald-400">
+                                  ₹{(
+                                    Number(watch('amount') || 0) +
+                                    (watch('gst_type') === 'cgst_sgst_2_5'
+                                      ? Math.round(Number(watch('amount') || 0) * 0.05)
+                                      : watch('gst_type') === 'cgst_sgst_5'
+                                      ? Math.round(Number(watch('amount') || 0) * 0.10)
+                                      : 0)
+                                  ).toLocaleString('en-IN')}
+                                </p>
+                              </div>
+
                             </div>
 
                             <div className="border-t border-slate-200/60 dark:border-white/5 pt-4 space-y-1">
@@ -715,7 +910,7 @@ export function ProjectCreationWizard() {
                               </div>
                               <div>
                                 <p className="text-xs font-medium text-slate-900 dark:text-white">Everything is Set</p>
-                                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Please review all values. Clicking below will initialize the project record.</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Please review all values. Clicking below will initialize the project record and its commercial milestone.</p>
                               </div>
                             </div>
                           </div>

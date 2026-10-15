@@ -28,13 +28,11 @@ export async function revalidateAccountsPaths(projectId?: string) {
 
     // Operations specific subpages
     revalidatePath('/engineer');
-    revalidatePath('/cad');
     revalidatePath('/field');
     
     // Force revalidation of route group layouts
     revalidatePath('/(modules)/accounts', 'layout');
     revalidatePath('/(modules)/(operations)/engineer', 'layout');
-    revalidatePath('/(modules)/(operations)/cad', 'layout');
     revalidatePath('/accounts', 'layout');
     
     console.log(`[Revalidation] Cleared App Router caches for sales, projects, and accountant subpaths${projectId ? ` (Project: ${projectId})` : ''}`);

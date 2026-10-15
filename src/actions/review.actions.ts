@@ -22,18 +22,17 @@ export async function approveProjectAction(projectId: string): Promise<ReviewRes
       return { success: false, error: 'Unauthorized. Engineer or Admin only.' };
     }
 
-    // Check if at least one CAD engineer and one Field engineer are assigned
+    // Check if at least one Field engineer is assigned
     const supabase: any = await createClient();
     const { data: assignments } = await supabase.from('project_assignments').select('role').eq('project_id', projectId);
-    const hasCad = assignments?.some((a: any) => a.role === 'cad');
     const hasField = assignments?.some((a: any) => a.role === 'field');
     
-    if (!hasCad || !hasField) {
-      return { success: false, error: "Cannot approve CAD: At least one CAD engineer and one Field engineer must be assigned to the team." };
+    if (!hasField) {
+      return { success: false, error: "Cannot approve: At least one Field engineer must be assigned to the team." };
     }
 
     // 1. Update Project Status using centralized workflow engine
-    const stageResponse = await updateProjectStageAction(projectId, 'field_assigned', "Prototype approved by Engineer, moving to Field Assignment.");
+    const stageResponse = await updateProjectStageAction(projectId, 'field_assigned', "Approved by Engineer, moving to Field Assignment.");
     
     if (!stageResponse.success) {
       return { success: false, error: stageResponse.error || "Failed to update project workflow." };
@@ -41,21 +40,6 @@ export async function approveProjectAction(projectId: string): Promise<ReviewRes
 
     // Notify accountants
     notifyApprovalAction(projectId).catch(console.error);
-
-    // Notify CAD that their prototype was approved
-    if (assignments) {
-      const cadUserIds = assignments.filter((a: any) => a.role === 'cad').map((a: any) => a.user_id);
-      if (cadUserIds.length > 0) {
-        const { sendLocalNotifications } = await import('@/actions/operations.actions');
-        await sendLocalNotifications(
-          cadUserIds,
-          "CAD Prototype Approved",
-          "Your CAD prototype has been approved by the Engineer.",
-          "approval",
-          projectId
-        );
-      }
-    }
 
     revalidatePath(`/projects/${projectId}`);
     return { success: true };
@@ -91,7 +75,7 @@ export async function rejectProjectAction(
       .from('project_assignments')
       .select('*')
       .eq('project_id', projectId)
-      .in('role', ['engineer', 'cad', 'field'])
+      .in('role', ['engineer', 'field'])
       .order('assigned_at', { ascending: false });
 
     if (assignmentError) {
@@ -144,7 +128,7 @@ export async function rejectProjectAction(
   }
 }
 
-export async function engineerReviewFinalCADAction(
+export async function engineerReviewFinalDeliverableAction(
   projectId: string,
   isApproved: boolean,
   rejectionReason?: string,
@@ -164,23 +148,28 @@ export async function engineerReviewFinalCADAction(
     const projectName = project?.name || projectId;
 
     if (isApproved) {
+      // Gate: Check if all assigned materials/equipment have been submitted to the company
+      const { data: unsubmittedMaterials } = await supabase
+        .from('material_requests')
+        .select('id, item_name, quantity')
+        .eq('project_id', projectId)
+        .in('status', ['assigned', 'requested']);
+
+      if (unsubmittedMaterials && unsubmittedMaterials.length > 0) {
+        const itemNames = unsubmittedMaterials.map((m: any) => `${m.quantity}x ${m.item_name}`).join(', ');
+        return {
+          success: false,
+          error: `Cannot approve final deliverable: All assigned project materials must be submitted to the company first. Pending return: [${itemNames}].`
+        };
+      }
+
       // Approve Flow
-      const stageResponse = await updateProjectStageAction(projectId, 'completed', "Final CAD Deliverable Approved by Engineer. Project Completed.");
+      const stageResponse = await updateProjectStageAction(projectId, 'completed', "Final Deliverable Approved by Engineer. Project Completed.");
       if (!stageResponse.success) {
         return { success: false, error: stageResponse.error || "Failed to complete project." };
       }
 
-      // 2. Log Activity
-      await supabase.from('activity_logs').insert({
-        id: randomUUID(),
-        project_id: projectId,
-        user_id: auth.userId,
-        action: 'ENGINEER_FINAL_CAD_APPROVED',
-        details: { approved_by: auth.userId },
-        created_at: new Date().toISOString()
-      });
-
-      // Update the CAD revision record so it appears as approved in the Revision History UI
+      // Update pending cad_revisions record
       const adminClient: any = createAdminClient();
       await adminClient
         .from('cad_revisions')
@@ -188,10 +177,20 @@ export async function engineerReviewFinalCADAction(
           status: 'approved',
           reviewed_by: auth.userId,
           reviewed_at: new Date().toISOString(),
-          review_notes: 'Final CAD Deliverable Approved by Engineer.'
+          review_notes: comments || 'Approved by Lead Engineer'
         })
         .eq('project_id', projectId)
         .eq('status', 'pending_review');
+
+      // 2. Log Activity
+      await supabase.from('activity_logs').insert({
+        id: randomUUID(),
+        project_id: projectId,
+        user_id: auth.userId,
+        action: 'ENGINEER_FINAL_DELIVERABLE_APPROVED',
+        details: { approved_by: auth.userId },
+        created_at: new Date().toISOString()
+      });
 
       // 3. Create completion notification for all assigned team members
       const { data: assignments } = await supabase
@@ -226,7 +225,7 @@ export async function engineerReviewFinalCADAction(
       const commentText = `Final deliverable rejected by Engineer. Reason: ${rejectionReason}. Comments: ${comments || 'None'}. Instructions: ${revisionInstructions || 'None'}`;
       const stageResponse = await updateProjectStageAction(projectId, 'final_review', commentText);
       if (!stageResponse.success) {
-        return { success: false, error: stageResponse.error || "Failed to update workflow stage to CAD Finalization." };
+        return { success: false, error: stageResponse.error || "Failed to update workflow stage to Deliverable Finalization." };
       }
 
       // Mark the current final deliverable files as rejected so they don't trigger the validation UI again
@@ -241,42 +240,33 @@ export async function engineerReviewFinalCADAction(
       const { data: updatedRevisions } = await adminClient
         .from('cad_revisions')
         .update({
-          status: 'rejected',
+          status: 'rework_requested',
           reviewed_by: auth.userId,
           reviewed_at: new Date().toISOString(),
-          review_notes: `Rejected by Engineer. Reason: ${rejectionReason}. Comments: ${comments || 'None'}`
+          review_notes: `Rework Requested by Engineer. Reason: ${rejectionReason}. Comments: ${comments || 'None'}`
         })
         .eq('project_id', projectId)
         .eq('status', 'pending_review')
         .select('id');
 
-      // Notify assigned CAD Specialist (we fetch this early to use for the insert below if needed)
-      const { data: cadAssignments } = await supabase
-        .from('project_assignments')
-        .select('user_id')
-        .eq('project_id', projectId)
-        .eq('role', 'cad');
-
       if (!updatedRevisions || updatedRevisions.length === 0) {
-        // If there was no pending revision (CAD just uploaded but didn't click submit),
-        // we create a rejected record directly so it shows in the history.
+        // If there was no pending revision, insert a rejected record directly so it shows in the history
         const { data: existingRevisions } = await adminClient.from('cad_revisions').select('id').eq('project_id', projectId);
         const revisionNumber = (existingRevisions || []).length + 1;
-        const cadUserId = (cadAssignments && cadAssignments.length > 0) ? cadAssignments[0].user_id : auth.userId;
 
         await adminClient.from('cad_revisions').insert({
-          id: `cad_${randomUUID().substring(0, 8)}`,
+          id: `rev_${randomUUID().substring(0, 8)}`,
           project_id: projectId,
-          submitted_by: cadUserId,
-          title: "Final Deliverable (Auto-generated on Rejection)",
-          description: "File was rejected before formal submission.",
+          submitted_by: auth.userId,
+          title: "Final Deliverable",
+          description: "Deliverable rejected by Engineer.",
           files: [],
           revision_number: revisionNumber,
-          status: "rejected",
-          revision_type: "prototype",
+          status: "rework_requested",
+          revision_type: "final",
           reviewed_by: auth.userId,
           reviewed_at: new Date().toISOString(),
-          review_notes: `Rejected by Engineer. Reason: ${rejectionReason}. Comments: ${comments || 'None'}`
+          review_notes: `Rework Requested by Engineer. Reason: ${rejectionReason}. Comments: ${comments || 'None'}`
         });
       }
 
@@ -285,7 +275,7 @@ export async function engineerReviewFinalCADAction(
         id: randomUUID(),
         project_id: projectId,
         user_id: auth.userId,
-        action: 'ENGINEER_FINAL_CAD_REJECTED',
+        action: 'ENGINEER_FINAL_DELIVERABLE_REJECTED',
         details: {
           rejected_by: auth.userId,
           reason: rejectionReason,
@@ -295,16 +285,20 @@ export async function engineerReviewFinalCADAction(
         created_at: new Date().toISOString()
       });
 
-      // CAD assignment is fetched above now
+      const { data: assignments } = await supabase
+        .from('project_assignments')
+        .select('user_id')
+        .eq('project_id', projectId);
 
-      const { insertNotificationsBatch } = await import('@/actions/notification.actions');
+      const recipientIds = (assignments || []).map((a: any) => a.user_id);
 
-      if (cadAssignments && cadAssignments.length > 0) {
+      if (recipientIds.length > 0) {
+        const { insertNotificationsBatch } = await import('@/actions/notification.actions');
         await insertNotificationsBatch(
-          cadAssignments.map((cad: any) => ({
-            userId: cad.user_id,
-            title: 'Action Required: Final CAD Package Rejected',
-            message: `Your final CAD package for "${projectName}" was rejected by the Lead Engineer. Reason: ${rejectionReason}`,
+          recipientIds.map((userId: any) => ({
+            userId,
+            title: 'Action Required: Final Deliverable Rejected',
+            message: `The final deliverable for "${projectName}" was rejected by the Lead Engineer. Reason: ${rejectionReason}`,
             type: 'rejection',
             relatedProjectId: projectId,
           }))
@@ -318,3 +312,5 @@ export async function engineerReviewFinalCADAction(
     return { success: false, error: err.message };
   }
 }
+
+export const engineerReviewFinalCADAction = engineerReviewFinalDeliverableAction;

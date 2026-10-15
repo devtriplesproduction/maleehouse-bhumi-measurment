@@ -3,7 +3,7 @@
 import React, { useState, useTransition } from "react";
 import {
   UserPlus, X, Search, Loader2,
-  Shield, PenTool, MapPin, User
+  Shield, MapPin, User
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 // Removed local-db import
@@ -14,11 +14,10 @@ import { toast } from "sonner";
 const LOCAL_USERS: any[] = [];
 const ROLE_CONFIG: Record<string, { label: string; color: string; bg: string; icon: any }> = {
   engineer: { label: "Engineer",    color: "text-amber-500",   bg: "bg-amber-500/10",   icon: Shield },
-  cad:      { label: "CAD",         color: "text-blue-500",    bg: "bg-blue-500/10",    icon: PenTool },
   field:    { label: "Field",       color: "text-emerald-500", bg: "bg-emerald-500/10", icon: MapPin },
 };
 
-const OPERATIONAL_ROLES = ["engineer", "cad", "field"];
+const OPERATIONAL_ROLES = ["engineer", "field"];
 
 interface AssignmentModalProps {
   projectId: string;

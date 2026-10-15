@@ -180,7 +180,7 @@ export default function ProjectActivityLogTab({
         type = 'finance';
         break;
       case 'FILE_UPLOADED':
-        title = 'CAD / Field Data Synced';
+        title = 'Project Document Synced';
         description = `Document Vault updated: "${details.file_name || ''}" synced in Category: ${details.category || ''}.`;
         icon = FileText;
         iconColor = 'text-blue-500';

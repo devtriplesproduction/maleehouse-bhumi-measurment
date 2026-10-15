@@ -45,24 +45,24 @@ export async function getSalesStatsAction(): Promise<StatItem[]> {
     const supabase: any = await createClient()
     const [
       { count: leadCount },
-      { count: quoteCount },
+      { count: pipelineCount },
       { count: paymentCount }
     ] = await Promise.all([
-      supabase.from('projects').select('id', { count: 'exact', head: true }).is('deleted_at', null).eq('status', 'lead'),
-      supabase.from('projects').select('id', { count: 'exact', head: true }).is('deleted_at', null).eq('status', 'quotation_sent'),
+      supabase.from('projects').select('id', { count: 'exact', head: true }).is('deleted_at', null).eq('status', 'lead_created'),
+      supabase.from('projects').select('id', { count: 'exact', head: true }).is('deleted_at', null).in('status', ['lead_created', 'payment_pending']),
       supabase.from('projects').select('id', { count: 'exact', head: true }).is('deleted_at', null).eq('status', 'payment_pending')
     ]);
 
     return [
       { label: 'Inbound Leads', value: leadCount || 0, description: 'Newly initiated requests' },
-      { label: 'Quotations Sent', value: quoteCount || 0, description: 'Proposals pending review' },
-      { label: 'Conversion Pending', value: paymentCount || 0, description: 'Awaiting first payment' },
+      { label: 'Active Pipeline', value: pipelineCount || 0, description: 'Projects in sales qualification' },
+      { label: 'Conversion Pending', value: paymentCount || 0, description: 'Awaiting mobilization payment' },
     ]
   } catch {
     return [
       { label: 'Inbound Leads', value: 0, description: 'Newly initiated requests' },
-      { label: 'Quotations Sent', value: 0, description: 'Proposals pending review' },
-      { label: 'Conversion Pending', value: 0, description: 'Awaiting first payment' },
+      { label: 'Active Pipeline', value: 0, description: 'Projects in sales qualification' },
+      { label: 'Conversion Pending', value: 0, description: 'Awaiting mobilization payment' },
     ]
   }
 }
@@ -100,28 +100,28 @@ export async function getAccountantStatsAction(): Promise<StatItem[]> {
     const [
       { count: monthlyCount },
       { count: activeCount },
-      { count: totalQuotations },
-      { data: recentQuotations }
+      { count: totalMilestones },
+      { data: recentPayments }
     ] = await Promise.all([
       supabase.from('projects').select('id', { count: 'exact', head: true }).is('deleted_at', null).gte('created_at', firstOfMonth),
       supabase.from('projects').select('id', { count: 'exact', head: true }).is('deleted_at', null).not('status', 'in', '("completed","archived")'),
-      supabase.from('quotations').select('id', { count: 'exact', head: true }),
-      supabase.from('quotations').select('total_amount').eq('status', 'Approved').gte('updated_at', firstOfMonth),
+      supabase.from('project_milestones').select('id', { count: 'exact', head: true }),
+      supabase.from('payments').select('amount').in('status', ['verified', 'paid']).gte('created_at', firstOfMonth),
     ]);
 
-    const monthlyRevenue = (recentQuotations || []).reduce((sum: any, q: any) => sum + Number(q.total_amount || 0), 0);
+    const monthlyRevenue = (recentPayments || []).reduce((sum: any, p: any) => sum + Number(p.amount || 0), 0);
 
     return [
       { label: 'Monthly Projects', value: monthlyCount || 0, trend: 'This Month', description: 'New projects added this month' },
-      { label: 'Monthly Revenue', value: `INR ${(monthlyRevenue / 100000).toFixed(1)}L`, trend: 'This Month', description: 'Revenue from approved quotations' },
-      { label: 'Total Quotations', value: totalQuotations || 0, description: 'All quotations generated' },
+      { label: 'Monthly Collections', value: `INR ${(monthlyRevenue / 100000).toFixed(1)}L`, trend: 'This Month', description: 'Verified milestone payments' },
+      { label: 'Total Milestones', value: totalMilestones || 0, description: 'All structured milestones' },
       { label: 'Active Projects', value: activeCount || 0, trend: 'Live', description: 'Projects currently in progress' },
     ]
   } catch {
     return [
       { label: 'Monthly Projects', value: 0, description: 'New projects this month' },
-      { label: 'Monthly Revenue', value: 'INR 0L', description: 'Revenue from approved quotations' },
-      { label: 'Total Quotations', value: 0, description: 'All quotations generated' },
+      { label: 'Monthly Collections', value: 'INR 0L', description: 'Verified milestone payments' },
+      { label: 'Total Milestones', value: 0, description: 'All structured milestones' },
       { label: 'Active Projects', value: 0, description: 'Projects currently in progress' },
     ]
   }

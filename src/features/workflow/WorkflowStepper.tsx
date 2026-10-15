@@ -6,8 +6,6 @@ import { cn } from "@/lib/utils";
 
 export type ProjectStage =
   | "lead_created"
-  | "quotation_requested"
-  | "quotation_sent"
   | "payment_pending"
   | "payment_done"
   | "project_created"
@@ -21,8 +19,6 @@ export type ProjectStage =
 
 export const STAGE_ORDER: ProjectStage[] = [
   "lead_created",
-  "quotation_requested",
-  "quotation_sent",
   "payment_pending",
   "payment_done",
   "project_created",
@@ -35,8 +31,6 @@ export const STAGE_ORDER: ProjectStage[] = [
 
 export const STAGE_LABELS: Record<ProjectStage, string> = {
   lead_created: "Lead Created",
-  quotation_requested: "Quotation Requested",
-  quotation_sent: "Quotation Sent",
   payment_pending: "Payment Pending",
   payment_done: "Payment Done",
   project_created: "Project Created",

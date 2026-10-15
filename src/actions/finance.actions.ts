@@ -230,7 +230,26 @@ export async function logPaymentAction(payload: CreatePaymentInput): Promise<Act
       if (existing) {
         finalInvoiceId = existing.id;
       } else {
-        return { success: false, error: "Validation failed: You must create an invoice for this milestone before logging a payment." };
+        // Auto-create internal billing ledger record for this milestone payment so DB integrity, RLS, and RPCs work seamlessly
+        const { data: milestone } = await supabase.from('project_milestones').select('amount, project_id').eq('id', milestone_id).single();
+        if (milestone) {
+          const invId = `inv-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+          const { data: newInv } = await supabase.from('invoices').insert({
+            id: invId,
+            project_id: payload.project_id,
+            milestone_id: milestone_id,
+            invoice_number: `BILL-${Date.now().toString().slice(-6)}`,
+            amount: Number(milestone.amount),
+            gst_rate: 0,
+            gst_amount: 0,
+            total_amount: Number(milestone.amount),
+            status: 'sent',
+            created_by: auth.userId
+          }).select('id').single();
+          if (newInv) {
+            finalInvoiceId = newInv.id;
+          }
+        }
       }
     }
 
@@ -288,7 +307,7 @@ export async function logPaymentAction(payload: CreatePaymentInput): Promise<Act
     
     // Only update to payment_pending if the project is in its early stages
     const { data: currentProject } = await supabase.from('projects').select('status').eq('id', payload.project_id).single();
-    if (currentProject && ['lead', 'lead_created', 'requirement_gathering', 'quotation_requested', 'quotation_sent', 'payment_pending'].includes(currentProject.status)) {
+    if (currentProject && ['lead', 'lead_created', 'requirement_gathering', 'payment_pending'].includes(currentProject.status)) {
       await updateProjectStageAction(payload.project_id, 'payment_pending', 'Payment manually logged.');
     }
 
@@ -430,7 +449,7 @@ export async function verifyPaymentAction(paymentId: string, status: 'verified' 
       const { data: project } = await supabase.from('projects').select('status, is_frozen, freeze_reason').eq('id', payment.project_id).single();
 
       // Early commercial stages → ready_for_dispatch (then auto-dispatch to ops)
-      const earlyCommercial = ['lead', 'lead_created', 'requirement_gathering', 'quotation_requested', 'quotation_sent', 'payment_pending', 'payment_done'];
+      const earlyCommercial = ['lead', 'lead_created', 'requirement_gathering', 'payment_pending', 'payment_done'];
       if (isActivationGatePaid || !project || earlyCommercial.includes(project.status)) {
         const stageRes = await updateProjectStageAction(payment.project_id, 'ready_for_dispatch', 'Payment verified. Project ready for dispatch.');
         if (stageRes?.success) {
@@ -514,7 +533,7 @@ export async function getInvoiceByIdAction(invoiceId: string): Promise<ActionRes
     const supabase: any = await createClient();
     const { data, error } = await supabase
       .from('invoices')
-      .select('*, projects(id, name, client_name, client_contact, client_address, budget, gst_number, payments(amount, status), quotations(total_amount, status, gst_rate, client_details)), payments(amount, status), project_milestones(title, sort_order)')
+      .select('*, projects(id, name, client_name, client_contact, client_address, budget, gst_number, payments(amount, status)), payments(amount, status), project_milestones(title, sort_order)')
       .eq('id', invoiceId)
       .single();
 
@@ -526,7 +545,7 @@ export async function getInvoiceByIdAction(invoiceId: string): Promise<ActionRes
 }
 
 const INVOICE_LIST_SELECT =
-  'id, invoice_number, project_id, milestone_id, visit_id, amount, gst_amount, total_amount, status, due_date, created_at, bank_id, projects!inner(id, name, client_name, client_contact, budget, gst_number, deleted_at, payments(amount, status), quotations(total_amount, status, gst_rate, client_details)), payments(amount, status), project_milestones(title, sort_order)';
+  'id, invoice_number, project_id, milestone_id, visit_id, amount, gst_amount, total_amount, status, due_date, created_at, bank_id, projects!inner(id, name, client_name, client_contact, budget, gst_number, deleted_at, payments(amount, status)), payments(amount, status), project_milestones(title, sort_order)';
 
 const PAYMENT_LIST_SELECT =
   'id, project_id, invoice_id, amount, status, payment_method, transaction_id, payment_date, created_at, bank_id, projects!inner(name, client_name, deleted_at), bank_accounts(bank_name), invoices(invoice_number, project_milestones(title))';
@@ -778,25 +797,20 @@ export async function createMilestonesAction(
 
     const { data: projectFinance } = await supabase
       .from('project_finances')
-      .select('total_quoted_amount')
+      .select('total_quoted_amount, contract_value')
       .eq('project_id', projectId)
       .maybeSingle();
 
-    if (projectFinance && projectFinance.total_quoted_amount) {
-      totalQuotedAmount = Number(projectFinance.total_quoted_amount);
+    if (projectFinance && (projectFinance.contract_value || projectFinance.total_quoted_amount)) {
+      totalQuotedAmount = Number(projectFinance.contract_value || projectFinance.total_quoted_amount);
     } else {
-      const { data: quotes } = await supabase
-        .from('quotations')
-        .select('total_amount, status')
-        .eq('project_id', projectId);
-      
-      if (quotes && quotes.length > 0) {
-        const approvedQuote = quotes.find((q: any) => q.status?.toLowerCase() === 'approved');
-        if (approvedQuote) {
-          totalQuotedAmount = Number(approvedQuote.total_amount || 0);
-        } else {
-          totalQuotedAmount = Math.max(...quotes.map((q: any) => Number(q.total_amount || 0)), 0);
-        }
+      const { data: proj } = await supabase
+        .from('projects')
+        .select('budget')
+        .eq('id', projectId)
+        .maybeSingle();
+      if (proj && proj.budget) {
+        totalQuotedAmount = Number(proj.budget);
       }
     }
 
@@ -1186,7 +1200,7 @@ export async function updateMilestoneStatusAction(
         .eq('id', milestone.project_id)
         .single();
 
-      const earlyCommercial = ['lead', 'lead_created', 'requirement_gathering', 'quotation_requested', 'quotation_sent', 'payment_pending', 'payment_done'];
+      const earlyCommercial = ['lead', 'lead_created', 'requirement_gathering', 'payment_pending', 'payment_done'];
       if (milestone.is_activation_gate || !project || earlyCommercial.includes(project.status)) {
         await updateProjectStageAction(milestone.project_id, 'ready_for_dispatch', comment || 'Activation gate milestone marked as paid. Project ready for dispatch.');
       } else if (
@@ -1333,16 +1347,7 @@ export async function autoGenerateMilestoneInvoicesAction(cronSecret?: string): 
       return acc;
     }, {});
 
-    const { data: quotationsData } = await supabase
-      .from('quotations')
-      .select('project_id, gst_rate')
-      .in('project_id', projectIds)
-      .eq('status', 'Approved');
-
-    const gstRatesByProject = (quotationsData || []).reduce((acc: any, q: any) => {
-      acc[q.project_id] = q.gst_rate;
-      return acc;
-    }, {});
+    const gstRatesByProject: Record<string, number> = {};
 
     const { data: fallbackInvoicesData } = await supabase
       .from('invoices')
@@ -1451,9 +1456,8 @@ export async function getProjectsFinancialSummaryAction(projectIds: string[]): P
     const supabase: any = await createClient();
     
     // We fetch all quotations instead of filtering by 'approved' only, because some 
-    // active projects might have 'Sent' or other status quotations if they skipped the formal approval flow.
-    const [quotesRes, paymentsRes] = await Promise.all([
-      supabase.from('quotations').select('project_id, total_amount, status').in('project_id', projectIds),
+    const [projectsRes, paymentsRes] = await Promise.all([
+      supabase.from('projects').select('id, budget').in('id', projectIds),
       supabase.from('payments').select('project_id, amount').in('project_id', projectIds).eq('status', 'verified')
     ]);
 
@@ -1462,24 +1466,12 @@ export async function getProjectsFinancialSummaryAction(projectIds: string[]): P
       summary[id] = { contract_value: 0, received_amount: 0 };
     });
 
-    if (quotesRes.data) {
-      // Group quotes by project
-      const quotesByProject: Record<string, any[]> = {};
-      quotesRes.data.forEach((q: any) => {
-        if (!quotesByProject[q.project_id]) quotesByProject[q.project_id] = [];
-        quotesByProject[q.project_id].push(q);
-      });
-
-      for (const pId of Object.keys(quotesByProject)) {
-        const quotes = quotesByProject[pId];
-        // Prefer 'Approved' quote, otherwise take the one with highest amount to be safe
-        const approvedQuote = quotes.find(q => q.status?.toLowerCase() === 'approved');
-        if (approvedQuote) {
-          summary[pId].contract_value = Number(approvedQuote.total_amount || 0);
-        } else {
-          summary[pId].contract_value = Math.max(...quotes.map(q => Number(q.total_amount || 0)), 0);
+    if (projectsRes.data) {
+      projectsRes.data.forEach((p: any) => {
+        if (summary[p.id]) {
+          summary[p.id].contract_value = Number(p.budget || 0);
         }
-      }
+      });
     }
 
     if (paymentsRes.data) {
@@ -1817,13 +1809,6 @@ export async function getProjectBillingSummaryAction(filterProjectIds?: string[]
       .select('project_id, amount')
       .in('project_id', projectIds);
 
-    // Fetch approved quotations to calculate dynamic budget
-    const { data: quotationsData } = await supabase
-      .from('quotations')
-      .select('project_id, total_amount, status')
-      .in('project_id', projectIds)
-      .eq('status', 'Approved');
-
     // Fetch payments to know what has been collected
     const { data: paymentsData, error: payError } = await supabase
       .from('payments')
@@ -1846,7 +1831,6 @@ export async function getProjectBillingSummaryAction(filterProjectIds?: string[]
         total_paid: 0,
         pending_balance: 0,
         milestone_sum: 0,
-        quotation_sum: 0
       };
     });
 
@@ -1868,17 +1852,10 @@ export async function getProjectBillingSummaryAction(filterProjectIds?: string[]
       }
     });
 
-    quotationsData?.forEach((q: any) => {
-      if (billingMap[q.project_id]) {
-        billingMap[q.project_id].quotation_sum += Number(q.total_amount || 0);
-      }
-    });
-
     const result = Object.values(billingMap).map((b: any) => {
       let dynamicBudget = b.base_budget;
       if (dynamicBudget === 0) {
-        if (b.quotation_sum > 0) dynamicBudget = b.quotation_sum;
-        else if (b.milestone_sum > 0) dynamicBudget = b.milestone_sum;
+        if (b.milestone_sum > 0) dynamicBudget = b.milestone_sum;
         else if (b.total_invoiced > 0) dynamicBudget = b.total_invoiced;
       }
       
@@ -2080,12 +2057,10 @@ export async function getProjectFinanceTabDataAction(projectId: string): Promise
     noStore();
     
     // Import other actions dynamically to avoid circular dependencies
-    const { getProjectQuotationsAction } = await import('@/actions/quotation.actions');
     const { getFieldVisitsAction } = await import('@/actions/operations.actions');
     const { getExpensesAction } = await import('@/actions/expense.actions');
 
     const [
-      quotationsRes,
       visitsRes,
       accountantRes,
       projectFinancesRes,
@@ -2093,7 +2068,6 @@ export async function getProjectFinanceTabDataAction(projectId: string): Promise
       paymentsRes,
       expensesRes
     ] = await Promise.all([
-      getProjectQuotationsAction(projectId),
       getFieldVisitsAction(projectId),
       getAccountantOwnerAction(projectId).catch(() => ({ success: true, data: null })),
       getProjectFinancesAction(projectId),
@@ -2102,15 +2076,10 @@ export async function getProjectFinanceTabDataAction(projectId: string): Promise
       getExpensesAction({ project_id: projectId })
     ]);
 
-    const quotations = quotationsRes?.data || [];
-    const activeQuotation = quotations.find((q: any) => 
-      q.status === 'Sent' || q.status === 'Viewed' || q.status === 'Approved' || q.status === 'Draft'
-    );
-
     return {
       success: true,
       data: {
-        activeQuotation,
+        activeQuotation: null,
         visits: visitsRes?.data || [],
         accountantOwner: accountantRes?.data || null,
         projectFinances: projectFinancesRes?.success ? projectFinancesRes.data : null,
@@ -2187,7 +2156,6 @@ export async function getBillingWorkspaceDataAction(): Promise<ActionResponse> {
           'id, project_id, title, amount, status, due_date, sort_order, linked_stage, is_activation_gate, created_at, projects!inner(name, client_name, budget, status, deleted_at)'
         )
         .is('projects.deleted_at', null)
-        .neq('status', 'paid')
         .order('due_date', { ascending: true })
         .limit(100)
     );
@@ -2216,7 +2184,6 @@ export async function getBillingWorkspaceDataAction(): Promise<ActionResponse> {
       total_paid: Number(p.total_paid || 0),
       pending_balance: Number(p.pending_balance || 0),
       milestone_sum: Number(p.milestone_sum || 0),
-      quotation_sum: Number(p.quotation_sum || 0),
     }));
 
     const invoices = (invoicesRes.data || []).map((inv: any) => ({

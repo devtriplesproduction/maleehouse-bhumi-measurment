@@ -29,7 +29,7 @@ import {
 } from "@/actions/comment.actions";
 
 type CommentType = "general" | "review" | "rejection" | "internal";
-type Role = "admin" | "accountant" | "engineer" | "field" | "cad" | "employee";
+type Role = "admin" | "accountant" | "engineer" | "field" | "employee";
 
 type CommentRow = {
   id: string;

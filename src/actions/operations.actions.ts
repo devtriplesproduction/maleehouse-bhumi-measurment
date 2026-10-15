@@ -127,7 +127,7 @@ export async function getOpsTeamMembersAction() {
       .from('profiles')
       .select('id, first_name, last_name, email, role, designation, is_active')
       .eq('is_active', true)
-      .in('role', ['cad', 'field', 'engineer'])
+      .in('role', ['field', 'engineer'])
       .order('first_name');
 
     if (error) throw error;
@@ -153,18 +153,16 @@ export async function assignTeamMemberAction(
 
     const supabase: any = await createClient();
 
-    // Enforce that an engineer/team member can only be assigned if the quotation is approved
-    const { data: quote } = await supabase
-      .from("quotations")
-      .select("status")
-      .eq("project_id", projectId)
-      .eq("status", "Approved")
-      .limit(1);
+    const { data: proj } = await supabase
+      .from("projects")
+      .select("id, status")
+      .eq("id", projectId)
+      .maybeSingle();
 
-    if (!quote || quote.length === 0) {
+    if (!proj) {
       return {
         success: false,
-        error: "Cannot assign team members: An approved quotation is required first."
+        error: "Project not found."
       };
     }
 
@@ -219,7 +217,7 @@ export async function claimProjectAction(projectId: string): Promise<OpResponse>
     const auth = await requireProjectAccess(projectId, { requireUnlocked: true, requireAssignment: false });
     if (!auth.authorized) return { success: false, error: auth.error || "Unauthorized." };
 
-    const allowedRoles = ["engineer", "cad", "field", "admin"];
+    const allowedRoles = ["engineer", "field", "admin"];
     if (!allowedRoles.includes(auth.role)) {
        return { success: false, error: "Role not authorized to claim projects." };
     }
@@ -269,7 +267,6 @@ export async function claimProjectAction(projectId: string): Promise<OpResponse>
     revalidatePath(`/projects/${projectId}`);
     revalidatePath("/operations");
     revalidatePath("/engineer");
-    revalidatePath("/cad");
     revalidatePath("/field");
     return { success: true, error: null };
   } catch (err: any) {
@@ -338,12 +335,13 @@ export async function getTeamAssignmentsAction(projectId: string): Promise<OpRes
   }
 }
 
-// ─── 2. CAD WORKFLOW ──────────────────────────────────────────────────────────
+// ─── 2. REVISION & CAD WORKFLOW ────────────────────────────────────────────────
 
 export type CADRevision = {
   id: string;
   project_id: string;
   submitted_by: string;
+  title?: string;
   file_name: string;
   file_url: string;
   revision_number: number;
@@ -352,7 +350,12 @@ export type CADRevision = {
   review_notes?: string;
   reviewed_by?: string;
   reviewed_at?: string;
+  revision_type?: string;
+  submitted_at?: string;
+  updated_at?: string;
   created_at: string;
+  submitted_by_profile?: any;
+  reviewed_by_profile?: any;
 };
 
 export async function submitCADRevisionAction(
@@ -363,22 +366,22 @@ export async function submitCADRevisionAction(
   revisionType: "prototype" | "final" = "prototype"
 ): Promise<OpResponse<CADRevision>> {
   try {
-    const auth = await requireProjectAccess(projectId, { requireUnlocked: true });
+    const auth = await requireProjectAccess(projectId, { requireUnlocked: false });
     if (!auth.authorized) return { success: false, error: auth.error || "Unauthorized." } as any;
 
-    if (!["cad", "admin"].includes(auth.role))
-      return { success: false, error: "Only CAD users can submit revisions." } as any;
+    if (!["cad", "engineer", "admin", "field"].includes(auth.role))
+      return { success: false, error: "Only authorized technical users can submit revisions." } as any;
 
     const supabase: any = await createClient();
     const { data: projectRevisions } = await supabase.from('cad_revisions').select('status').eq('project_id', projectId);
 
-    const { data: project } = await supabase.from('projects').select('bypass_active').eq('id', projectId).single();
-    const rejectedCount = (projectRevisions || []).filter((r: any) => r.status === "rejected").length;
+    const { data: project } = await supabase.from('projects').select('bypass_active, workflow_type').eq('id', projectId).single();
+    const rejectedCount = (projectRevisions || []).filter((r: any) => r.status === "rejected" || r.status === "rework_requested").length;
 
     if (rejectedCount >= 10 && !project?.bypass_active) {
       return {
         success: false,
-        error: "REVISION LIMIT REACHED (Escalated Review Active): This project has reached the limit of 10 CAD rejections and is currently locked under Escalation Hold. An Admin or Lead Engineer must verify alignment mismatch parameters before further prototype submissions."
+        error: "REVISION LIMIT REACHED (Escalated Review Active): This project has reached the limit of 10 rejections and is currently locked under Escalation Hold. An Admin or Lead Engineer must verify parameters before further submissions."
       };
     }
 
@@ -388,7 +391,7 @@ export async function submitCADRevisionAction(
       id: generateId("cad"),
       project_id: projectId,
       submitted_by: auth.userId,
-      title: revisionType === "final" ? "Final CAD Deliverable" : "CAD Prototype",
+      title: revisionType === "final" ? "Final Deliverable" : "Prototype Drawing",
       description: revisionNotes,
       files: [{ name: fileName, url: fileUrl }],
       revision_number: revisionNumber,
@@ -398,8 +401,6 @@ export async function submitCADRevisionAction(
 
     const { data: insertedRevision, error: insertError } = await supabase.from('cad_revisions').insert(newRevision).select().single();
     if (insertError) throw new Error(insertError.message);
-
-    await updateProjectStageAction(projectId, "review", `CAD Revision #${revisionNumber} submitted for review.`);
 
     const projectName = await getProjectName(projectId);
     await logActivity(projectId, auth.userId, "CAD_SUBMITTED", {
@@ -412,17 +413,18 @@ export async function submitCADRevisionAction(
     const engineerIds = (engineers || []).map((eng: any) => eng.id);
     await sendLocalNotifications(
       engineerIds,
-      revisionType === "final" ? "Final CAD Deliverable Submitted" : "CAD Revision Submitted",
+      revisionType === "final" ? "Final Deliverable Submitted" : "Revision Submitted",
       `Revision #${revisionNumber} for "${projectName}" is ready for review.`,
       "approval",
       projectId
     );
 
     revalidatePath(`/projects/${projectId}`);
-    revalidatePath("/cad");
+    revalidatePath("/engineer");
+    revalidatePath("/operations");
     return { success: true, error: null, data: insertedRevision as any };
   } catch (err: any) {
-    return { success: false, error: err.message || "Failed to submit CAD revision." };
+    return { success: false, error: err.message || "Failed to submit revision." };
   }
 }
 
@@ -436,18 +438,9 @@ export async function approveCADRevisionAction(
     if (!auth.authorized) return { success: false, error: auth.error || "Unauthorized." };
 
     if (!["engineer", "admin"].includes(auth.role))
-      return { success: false, error: "Only Engineers can approve CAD revisions." };
+      return { success: false, error: "Only Engineers or Admins can approve revisions." };
 
     const supabase: any = await createClient();
-    
-    // Check if at least one CAD engineer and one Field engineer are assigned
-    const { data: assignments } = await supabase.from('project_assignments').select('role').eq('project_id', projectId);
-    const hasCad = assignments?.some((a: any) => a.role === 'cad');
-    const hasField = assignments?.some((a: any) => a.role === 'field');
-    
-    if (!hasCad || !hasField) {
-      return { success: false, error: "Cannot approve CAD: At least one CAD engineer and one Field engineer must be assigned to the team." };
-    }
 
     const { data: updatedRevision, error: updateError } = await supabase.from('cad_revisions').update({
       status: "approved",
@@ -455,7 +448,7 @@ export async function approveCADRevisionAction(
       reviewed_at: new Date().toISOString(),
       review_notes: reviewNote || "Approved.",
     }).eq('id', revisionId).select().single();
-    if (updateError) return { success: false, error: "CAD revision not found." };
+    if (updateError) return { success: false, error: "Revision not found." };
 
     const revision = updatedRevision;
     const projectName = await getProjectName(projectId);
@@ -468,27 +461,24 @@ export async function approveCADRevisionAction(
     if (revision?.submitted_by) {
       await sendLocalNotification(
         revision.submitted_by,
-        "CAD Approved ✓",
-        `Your CAD revision for "${projectName}" has been approved.`,
+        "Revision Approved ✓",
+        `Your revision for "${projectName}" has been approved.`,
         "approval",
         projectId
       );
     }
 
-    const { data: project } = await supabase.from('projects').select('status').eq('id', projectId).single();
-
-    if (project?.status === "data_sync" || project?.status === "final_review") {
-      await updateProjectStageAction(projectId, "completed", "Final CAD Deliverable Approved. Delivered to Client.");
-    } else {
-      await updateProjectStageAction(projectId, "field_work", "CAD Revision Approved. Field Engineer automatically transitioned to work.");
+    const { data: projectInfo } = await supabase.from('projects').select('status').eq('id', projectId).single();
+    if (projectInfo?.status === "final_review" || projectInfo?.status === "data_sync") {
+      await updateProjectStageAction(projectId, "completed", "Final Deliverable Approved. Delivered to Client.");
     }
 
     revalidatePath(`/projects/${projectId}`);
     revalidatePath("/engineer");
-    revalidatePath("/cad");
+    revalidatePath("/operations");
     return { success: true, error: null, data: updatedRevision as any };
   } catch (err: any) {
-    return { success: false, error: err.message || "Failed to approve CAD revision." };
+    return { success: false, error: err.message || "Failed to approve revision." };
   }
 }
 
@@ -498,20 +488,21 @@ export async function rejectCADRevisionAction(
   rejectionReason: string
 ): Promise<OpResponse<any>> {
   try {
-    const auth = await requireProjectAccess(projectId, { requireUnlocked: true });
+    const auth = await requireProjectAccess(projectId, { requireUnlocked: false });
     if (!auth.authorized) return { success: false, error: auth.error || "Unauthorized." };
 
     if (!["engineer", "admin"].includes(auth.role))
-      return { success: false, error: "Only Engineers can reject CAD revisions." };
+      return { success: false, error: "Only Engineers or Admins can reject revisions." };
 
     const supabase: any = await createClient();
+
     const { data: updatedRevision, error: updateError } = await supabase.from('cad_revisions').update({
-      status: "rejected",
+      status: "rework_requested",
       reviewed_by: auth.userId,
       reviewed_at: new Date().toISOString(),
       review_notes: rejectionReason,
     }).eq('id', revisionId).select().single();
-    if (updateError) return { success: false, error: "CAD revision not found." };
+    if (updateError) return { success: false, error: "Revision not found." };
 
     const revision = updatedRevision;
     const projectName = await getProjectName(projectId);
@@ -521,21 +512,20 @@ export async function rejectCADRevisionAction(
       rejection_reason: rejectionReason,
     });
 
-    await addProjectCommentAction(projectId, `[CAD Prototype Rejection] ${rejectionReason}`, 'rejection');
+    await addProjectCommentAction(projectId, `[Rework Requested] ${rejectionReason}`, 'rejection');
 
-    const { data: project } = await supabase.from('projects').select('status').eq('id', projectId).single();
-
-    if (project?.status === "data_sync") {
-      await updateProjectStageAction(projectId, 'data_sync', `Final deliverable rejected. Rework requested. Reason: ${rejectionReason}`);
-    } else {
-      await updateProjectStageAction(projectId, 'prototype', `CAD prototype rejected. Rework requested. Reason: ${rejectionReason}`);
+    const { data: projectInfo } = await supabase.from('projects').select('status').eq('id', projectId).single();
+    if (projectInfo?.status === "final_review") {
+      await updateProjectStageAction(projectId, 'final_review', `Final deliverable rejected. Rework requested. Reason: ${rejectionReason}`);
+    } else if (projectInfo?.status === "data_sync") {
+      await updateProjectStageAction(projectId, 'field_work', `Data sync rejected. Rework requested. Reason: ${rejectionReason}`);
     }
 
     if (revision?.submitted_by) {
       await sendLocalNotification(
         revision.submitted_by,
-        "CAD Rejected — Action Required",
-        `Your CAD revision for "${projectName}" was rejected: ${rejectionReason.slice(0, 100)}`,
+        "Revision Rejected — Rework Requested",
+        `Your revision for "${projectName}" was rejected: ${rejectionReason.slice(0, 100)}`,
         "rejection",
         projectId
       );
@@ -543,10 +533,10 @@ export async function rejectCADRevisionAction(
 
     revalidatePath(`/projects/${projectId}`);
     revalidatePath("/engineer");
-    revalidatePath("/cad");
+    revalidatePath("/operations");
     return { success: true, error: null, data: updatedRevision as any };
   } catch (err: any) {
-    return { success: false, error: err.message || "Failed to reject CAD revision." };
+    return { success: false, error: err.message || "Failed to reject revision." };
   }
 }
 
@@ -555,7 +545,7 @@ export async function bypassCADEscalationAction(projectId: string): Promise<OpRe
     const auth = await requireProjectAccess(projectId, { requireUnlocked: true });
     if (!auth.authorized) return { success: false, error: auth.error || "Unauthorized." };
 
-    if (auth.role !== "admin") {
+    if (!["admin", "engineer"].includes(auth.role)) {
       return { success: false, error: "Only Admin or Lead Engineer can authorize escalation bypass." };
     }
 
@@ -583,11 +573,74 @@ export async function getCADRevisionsAction(projectId: string): Promise<OpRespon
     if (!auth.authorized) return { success: false, error: auth.error || null, data: [] };
 
     const supabase: any = await createClient();
-    const { data: revisions, error: queryError } = await supabase.from('cad_revisions').select('id, project_id, submitted_by, files, revision_number, description, status, review_notes, reviewed_by, reviewed_at, submitted_at, updated_at').eq('project_id', projectId);
+    let { data: revisions, error: queryError } = await supabase
+      .from('cad_revisions')
+      .select('id, project_id, submitted_by, title, files, revision_number, description, status, review_notes, reviewed_by, reviewed_at, submitted_at, updated_at, revision_type')
+      .eq('project_id', projectId)
+      .order('submitted_at', { ascending: false });
     
     if (queryError) {
       console.error("getCADRevisionsAction query error:", queryError);
       return { success: false, error: queryError.message, data: [] };
+    }
+
+    // Auto-heal / sync: If cad_revisions has no survey rejections yet, check if there are prior survey rejection activity logs
+    if (!revisions || revisions.length === 0) {
+      try {
+        const adminClient: any = createAdminClient();
+        const { data: rejectLogs } = await adminClient
+          .from('activity_logs')
+          .select('id, user_id, details, created_at')
+          .eq('project_id', projectId)
+          .eq('action', 'FIELD_SURVEY_REJECTED')
+          .order('created_at', { ascending: true });
+
+        if (rejectLogs && rejectLogs.length > 0) {
+          const { data: fieldAssignments } = await adminClient
+            .from('project_assignments')
+            .select('user_id')
+            .eq('project_id', projectId)
+            .eq('role', 'field');
+          const fieldUserId = (fieldAssignments && fieldAssignments.length > 0) ? fieldAssignments[0].user_id : auth.userId;
+
+          const { data: surveyFiles } = await adminClient
+            .from('files')
+            .select('file_name, file_url')
+            .eq('project_id', projectId)
+            .in('category', ['survey_data', 'control_point_csv', 'control_point_image']);
+
+          for (let i = 0; i < rejectLogs.length; i++) {
+            const log = rejectLogs[i];
+            const reason = log.details?.reviewNotes || log.details?.reason || 'Rework required';
+            const newRev = {
+              id: `rev-hist-${log.id}`,
+              project_id: projectId,
+              submitted_by: fieldUserId,
+              title: "Field Survey Data",
+              description: `Field Survey rejected by Engineer. Reason: ${reason}`,
+              files: (surveyFiles || []).map((f: any) => ({ name: f.file_name, url: f.file_url })),
+              revision_number: i + 1,
+              status: "rework_requested",
+              revision_type: "survey",
+              reviewed_by: log.user_id,
+              reviewed_at: log.created_at,
+              review_notes: `Rework Requested by Engineer. Reason: ${reason}`,
+              submitted_at: log.created_at,
+              updated_at: log.created_at
+            };
+            await adminClient.from('cad_revisions').insert(newRev);
+          }
+
+          const { data: refetched } = await supabase
+            .from('cad_revisions')
+            .select('id, project_id, submitted_by, title, files, revision_number, description, status, review_notes, reviewed_by, reviewed_at, submitted_at, updated_at, revision_type')
+            .eq('project_id', projectId)
+            .order('submitted_at', { ascending: false });
+          revisions = refetched || [];
+        }
+      } catch (syncErr) {
+        console.error("Failed to sync historical survey revisions:", syncErr);
+      }
     }
 
     const userIds = Array.from(new Set((revisions || []).flatMap((r: any) => [r.submitted_by, r.reviewed_by]))).filter(Boolean);
@@ -599,16 +652,16 @@ export async function getCADRevisionsAction(projectId: string): Promise<OpRespon
     const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]));
 
     const data = (revisions || []).map((r: any) => {
-      // Map back to the expected type format for backwards compatibility
       const file = Array.isArray(r.files) && r.files.length > 0 ? r.files[0] : {};
       return {
         ...r,
-        file_name: file.name || '',
+        title: r.title || (r.revision_type === 'survey' ? 'Field Survey Data' : 'Final Deliverable'),
+        file_name: file.name || r.title || 'Revision Document',
         file_url: file.url || '',
         revision_notes: r.description || '',
         created_at: r.submitted_at || r.updated_at || new Date().toISOString(),
-        submitted_by_profile: profileMap.get(r.submitted_by) || { first_name: "Unknown", last_name: "User", email: "", role: "hr" },
-        reviewed_by_profile: r.reviewed_by ? (profileMap.get(r.reviewed_by) || { first_name: "Unknown", last_name: "User", email: "", role: "hr" }) : null,
+        submitted_by_profile: profileMap.get(r.submitted_by) || { first_name: "Field", last_name: "Team", email: "", role: "field" },
+        reviewed_by_profile: r.reviewed_by ? (profileMap.get(r.reviewed_by) || { first_name: "Engineer", last_name: "", email: "", role: "engineer" }) : null,
       };
     });
     data.sort((a: any, b: any) => b.revision_number - a.revision_number);
@@ -628,7 +681,7 @@ export async function reviewLatestCADRevisionAction(
 
   const pendingRevision = revisionsRes.data?.find((r: any) => r.status === "pending_review");
   if (!pendingRevision) {
-    return { success: false, error: "Validation failed: No pending CAD revision found for this project." };
+    return { success: false, error: "Validation failed: No pending revision found for this project." };
   }
 
   if (isApproved) {
@@ -790,36 +843,16 @@ export async function submitFieldSurveyAction(
     const res = await submitFieldReportAction(projectId, "completion", description, locationNotes);
     if (!res.success) return { success: false, error: res.error };
 
-    await updateProjectStageAction(projectId, "data_sync", "Field Survey completed. Awaiting CAD synchronization/review.");
+    await updateProjectStageAction(projectId, "data_sync", "Field Survey completed. Awaiting review.");
 
     const profile: any = await getUserProfileAction();
     await logActivity(projectId, profile?.id || "sys", "FIELD_SURVEY_SUBMITTED", { description });
 
     revalidatePath(`/projects/${projectId}`);
     revalidatePath("/field");
-    revalidatePath("/cad");
     return { success: true, error: null };
   } catch (err: any) {
     return { success: false, error: err.message };
-  }
-}
-
-export async function notifyCadSurveyDataUploadedAction(projectId: string): Promise<void> {
-  const assignRes = await getTeamAssignmentsAction(projectId);
-  if (assignRes.success && assignRes.data) {
-    const cadUserIds = assignRes.data
-      .filter((a: any) => ["cad"].includes(a.role))
-      .map((a: any) => a.user_id);
-    
-    if (cadUserIds.length > 0) {
-      await sendLocalNotifications(
-        cadUserIds,
-        "Survey Data Uploaded",
-        `Field survey completed for this project. Ready for CAD synchronization.`,
-        "system",
-        projectId
-      );
-    }
   }
 }
 
@@ -832,18 +865,96 @@ export async function reviewFieldSurveyAction(
     const auth = await requireProjectAccess(projectId, { requireUnlocked: true });
     if (!auth.authorized) return { success: false, error: auth.error || "Unauthorized." };
 
-    if (!["cad", "admin"].includes(auth.role))
-      return { success: false, error: "Only CAD can review field surveys." };
+    if (!["engineer", "admin"].includes(auth.role))
+      return { success: false, error: "Only Engineers or Admins can review field surveys." };
 
     if (isApproved) {
-      const stRes = await updateProjectStageAction(projectId, "final_review", `Field Survey Accepted. Ready for Final CAD. Notes: ${reviewNotes}`);
+      const stRes = await updateProjectStageAction(projectId, "final_review", `Field Survey Accepted. Ready for Final Deliverables. Notes: ${reviewNotes}`);
       if (!stRes.success) return stRes;
       await logActivity(projectId, auth.userId, "FIELD_SURVEY_APPROVED", { reviewNotes });
+
+      try {
+        const adminClient: any = createAdminClient();
+        const { data: existingRevisions } = await adminClient
+          .from('cad_revisions')
+          .select('id')
+          .eq('project_id', projectId);
+        const revisionNumber = (existingRevisions || []).length + 1;
+
+        const { data: surveyFiles } = await adminClient
+          .from('files')
+          .select('file_name, file_url')
+          .eq('project_id', projectId)
+          .in('category', ['survey_data', 'control_point_csv', 'control_point_image']);
+
+        const { data: fieldAssignments } = await adminClient
+          .from('project_assignments')
+          .select('user_id')
+          .eq('project_id', projectId)
+          .eq('role', 'field');
+        const fieldUserId = (fieldAssignments && fieldAssignments.length > 0) ? fieldAssignments[0].user_id : auth.userId;
+
+        await adminClient.from('cad_revisions').insert({
+          id: generateId("rev"),
+          project_id: projectId,
+          submitted_by: fieldUserId,
+          title: "Field Survey Data",
+          description: reviewNotes ? `Field Survey Approved: ${reviewNotes}` : "Field survey validated and approved by Engineer.",
+          files: (surveyFiles || []).map((f: any) => ({ name: f.file_name, url: f.file_url })),
+          revision_number: revisionNumber,
+          status: "approved",
+          revision_type: "survey",
+          reviewed_by: auth.userId,
+          reviewed_at: new Date().toISOString(),
+          review_notes: reviewNotes || "Approved by Engineer"
+        });
+      } catch (revErr) {
+        console.error("Failed to record survey approval in cad_revisions:", revErr);
+      }
     } else {
       const stRes = await updateProjectStageAction(projectId, "field_work", `Field Survey Rejected. Reason: ${reviewNotes}`);
       if (!stRes.success) return stRes;
       await logActivity(projectId, auth.userId, "FIELD_SURVEY_REJECTED", { reviewNotes });
       await addProjectCommentAction(projectId, `[Survey Rejection] ${reviewNotes}`, "rejection");
+
+      try {
+        const adminClient: any = createAdminClient();
+        const { data: existingRevisions } = await adminClient
+          .from('cad_revisions')
+          .select('id')
+          .eq('project_id', projectId);
+        const revisionNumber = (existingRevisions || []).length + 1;
+
+        const { data: surveyFiles } = await adminClient
+          .from('files')
+          .select('file_name, file_url')
+          .eq('project_id', projectId)
+          .in('category', ['survey_data', 'control_point_csv', 'control_point_image']);
+
+        const { data: fieldAssignments } = await adminClient
+          .from('project_assignments')
+          .select('user_id')
+          .eq('project_id', projectId)
+          .eq('role', 'field');
+        const fieldUserId = (fieldAssignments && fieldAssignments.length > 0) ? fieldAssignments[0].user_id : auth.userId;
+
+        await adminClient.from('cad_revisions').insert({
+          id: generateId("rev"),
+          project_id: projectId,
+          submitted_by: fieldUserId,
+          title: "Field Survey Data",
+          description: `Field Survey rejected by Engineer. Reason: ${reviewNotes}`,
+          files: (surveyFiles || []).map((f: any) => ({ name: f.file_name, url: f.file_url })),
+          revision_number: revisionNumber,
+          status: "rework_requested",
+          revision_type: "survey",
+          reviewed_by: auth.userId,
+          reviewed_at: new Date().toISOString(),
+          review_notes: `Rework Requested by Engineer. Reason: ${reviewNotes}`
+        });
+      } catch (revErr) {
+        console.error("Failed to record survey rejection in cad_revisions:", revErr);
+      }
 
       // Notify field workers
       const assignRes = await getTeamAssignmentsAction(projectId);
@@ -865,7 +976,6 @@ export async function reviewFieldSurveyAction(
     }
 
     revalidatePath(`/projects/${projectId}`);
-    revalidatePath("/cad");
     revalidatePath("/field");
     return { success: true, error: null };
   } catch (err: any) {
@@ -886,7 +996,7 @@ export async function engineerApproveSurveyDataAction(
       return { success: false, error: "Only Engineers can validate field data." };
 
     if (isApproved) {
-      await updateProjectStageAction(projectId, "final_review", `Engineer Data Validated. Ready for CAD Finalization. Notes: ${reviewNotes}`);
+      await updateProjectStageAction(projectId, "final_review", `Engineer Data Validated. Ready for Final Deliverables. Notes: ${reviewNotes}`);
       await logActivity(projectId, auth.userId, "ENGINEER_DATA_APPROVED", { reviewNotes });
     } else {
       await updateProjectStageAction(projectId, "field_work", `Engineer Data Validation Rejected. Reason: ${reviewNotes}`);
@@ -1098,21 +1208,7 @@ export async function getMyAssignedProjectsAction() {
       }
     }
 
-    // Include unassigned projects in 'prototype' or 'data_sync' phases for CAD (and admins) to claim/view
-    if (profile.role === 'cad' || profile.role === 'admin') {
-      const { data: cadProjects } = await supabase.from('projects').select('id').in('status', ['prototype', 'data_sync']).is('deleted_at', null);
-      if (cadProjects && cadProjects.length > 0) {
-        const cadIds = cadProjects.map((p: any) => p.id);
-        const { data: cadAssignments } = await supabase.from('project_assignments').select('project_id').in('project_id', cadIds).eq('role', 'cad');
-        const assignedCadSet = new Set((cadAssignments || []).map((a: any) => a.project_id));
-        
-        cadIds.forEach((id: string) => {
-          if (!assignedCadSet.has(id)) {
-            assignedProjectIds.add(id);
-          }
-        });
-      }
-    }
+
 
     // Include unassigned projects in 'field_assigned' phase for field roles to claim/view
     if (['field', 'admin'].includes(profile.role)) {
@@ -1213,73 +1309,4 @@ export async function getDeliveryChecklistAction(projectId: string): Promise<OpR
   }
 }
 
-export async function getCADMetricsAction(): Promise<OpResponse<any>> {
-  try {
-    const profile: any = await getUserProfileAction();
-    if (!profile) return { success: false, error: "Unauthorized.", data: null };
-    const userId = profile.id;
 
-    const supabase: any = await createClient();
-
-    // 1. Drawing Counts (CAD files grouped by project)
-    const { data: files } = await supabase
-      .from('files')
-      .select('project_id')
-      .in('category', ['cad_drawing', 'prototype', 'cad']);
-      
-    const projectDrawingCounts: Record<string, number> = {};
-    (files || []).forEach((f: any) => {
-      projectDrawingCounts[f.project_id] = (projectDrawingCounts[f.project_id] || 0) + 1;
-    });
-
-    // 2. Revision Requests (Rejected CAD revisions submitted by this user)
-    const { data: revisions } = await supabase
-      .from('cad_revisions')
-      .select('id, project_id, review_notes, status')
-      .eq('status', 'rejected')
-      .eq('submitted_by', userId);
-
-    const activeRevisions = (revisions || []).map((r: any) => ({
-      id: r.id,
-      project_id: r.project_id,
-      title: r.review_notes || 'CAD Revision Rejected',
-      status: r.status
-    }));
-
-    // 3. Productivity Metrics (from EOD Reports)
-    // For this week/month, just sum up hours_spent and tasks_completed from recent eod_reports
-    const { data: eodReports } = await supabase
-      .from('eod_reports')
-      .select('hours_spent, tasks_completed')
-      .eq('user_id', userId)
-      .order('date', { ascending: false })
-      .limit(7); // past week
-
-    let totalHours = 0;
-    let totalTasksStr = "";
-    (eodReports || []).forEach((r: any) => {
-      totalHours += (r.hours_spent || 0);
-      totalTasksStr += " " + (r.tasks_completed || "");
-    });
-    
-    // Naive task count (split by commas or newlines in the text field)
-    const tasksArr = totalTasksStr.split(/[\n,]+/).filter(t => t.trim().length > 0);
-    
-    const productivity = {
-      weeklyHours: totalHours,
-      weeklyTasksCompleted: tasksArr.length
-    };
-
-    return { 
-      success: true, 
-      error: null, 
-      data: {
-        projectDrawingCounts,
-        activeRevisions,
-        productivity
-      } 
-    };
-  } catch (err: any) {
-    return { success: false, error: err.message, data: null };
-  }
-}

@@ -29,40 +29,6 @@ export async function getLeadsAction(): Promise<ActionResponse> {
   }
 }
 
-export async function getQuotationsAction(): Promise<ActionResponse<any[]>> {
-  try {
-    const profile = await getUserProfileAction();
-    if (!profile) return { success: false, error: 'Unauthorized' };
-
-    const supabase: any = await createClient();
-    
-    const { data: quotations, error } = await supabase
-      .from('quotations')
-      .select(`
-        id,
-        quotation_number,
-        total_amount,
-        status,
-        current_version,
-        created_at,
-        projects:project_id (
-          id,
-          name,
-          client_name,
-          status
-        )
-      `)
-      .order('created_at', { ascending: false })
-      .limit(100);
-
-    if (error) return { success: false, error: error.message };
-
-    return { success: true, data: quotations };
-  } catch (error: any) {
-    return { success: false, error: error.message };
-  }
-}
-
 export async function updateLeadStatusAction(projectId: string, status: string): Promise<ActionResponse> {
   try {
     const profile = await getUserProfileAction();
@@ -215,9 +181,9 @@ export async function finalizeRequirementsAction(projectId: string): Promise<Act
 
     const supabase: any = await createClient();
 
-    // 1. Update project status to quotation_requested
+    // 1. Update project status to payment_pending
     const { error: updateError } = await supabase.from('projects').update({
-      status: 'quotation_requested',
+      status: 'payment_pending',
       updated_at: new Date().toISOString()
     }).eq('id', projectId);
 
@@ -227,8 +193,8 @@ export async function finalizeRequirementsAction(projectId: string): Promise<Act
     await supabase.from('activity_logs').insert({
       project_id: projectId,
       user_id: profile.id,
-      action: 'QUOTATION_REQUESTED',
-      details: { message: 'Sales finalized requirements and requested commercial quotation from Accounts.' },
+      action: 'REQUIREMENTS_FINALIZED',
+      details: { message: 'Sales finalized requirements. Transitioned to payment pending.' },
       created_at: new Date().toISOString()
     });
 

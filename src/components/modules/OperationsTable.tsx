@@ -10,7 +10,6 @@ import {
   CheckCircle2,
   Clock,
   Hammer,
-  PenTool,
   MapPin,
   ClipboardCheck
 } from 'lucide-react';
@@ -23,8 +22,6 @@ interface OperationsTableProps {
 const operationalStages = [
   'project_created',
   'data_collection',
-  'prototype',
-  'review',
   'field_work',
   'data_sync',
   'final_review'
@@ -33,8 +30,6 @@ const operationalStages = [
 const stageConfig: Record<string, { label: string; icon: any; color: string }> = {
   project_created: { label: 'Initiated', icon: Activity, color: 'text-indigo-500 bg-indigo-500/10' },
   data_collection: { label: 'Data Collection', icon: Hammer, color: 'text-sky-500 bg-sky-500/10' },
-  prototype: { label: 'Drafting/CAD', icon: PenTool, color: 'text-purple-500 bg-purple-500/10' },
-  review: { label: 'QC Review', icon: ClipboardCheck, color: 'text-orange-500 bg-orange-500/10' },
   field_work: { label: 'Field Ops', icon: MapPin, color: 'text-teal-500 bg-teal-500/10' },
   data_sync: { label: 'Syncing', icon: Activity, color: 'text-cyan-500 bg-cyan-500/10' },
   final_review: { label: 'Final QC', icon: ClipboardCheck, color: 'text-rose-500 bg-rose-500/10' },
@@ -116,7 +111,6 @@ export function OperationsTable({ initialProjects }: OperationsTableProps) {
               <tr className="bg-white/40 dark:bg-white/5 backdrop-blur-md border-b border-gray-200/50 dark:border-gray-700/50 text-xs font-black text-slate-400 uppercase tracking-[0.2em]">
                 <th className="px-8 py-6">Project & Stage</th>
                 <th className="px-6 py-6 text-center">Engineering</th>
-                <th className="px-6 py-6 text-center">CAD / Drafting</th>
                 <th className="px-6 py-6 text-center">Field Ops</th>
                 <th className="px-6 py-6 text-right">Action</th>
               </tr>
@@ -124,7 +118,7 @@ export function OperationsTable({ initialProjects }: OperationsTableProps) {
             <tbody className="divide-y divide-gray-200/30 dark:divide-white/5">
               {filteredProjects.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-32 text-center">
+                  <td colSpan={4} className="px-6 py-32 text-center">
                     <div className="flex flex-col items-center justify-center space-y-4">
                       <div className="w-20 h-20 rounded-full bg-slate-500/5 flex items-center justify-center">
                         <Activity className="w-10 h-10 text-slate-500/20" />
@@ -137,7 +131,6 @@ export function OperationsTable({ initialProjects }: OperationsTableProps) {
                 filteredProjects.map((project) => {
                   const StageIcon = stageConfig[project.status]?.icon || Activity;
                   const engineer = getAssignment(project, 'engineer');
-                  const cad = getAssignment(project, 'cad');
                   const field = getAssignment(project, 'field');
 
                   return (
@@ -179,27 +172,6 @@ export function OperationsTable({ initialProjects }: OperationsTableProps) {
                            ) : (
                              <div className="w-10 h-10 rounded-full border-2 border-dashed border-slate-200 dark:border-white/10 flex items-center justify-center text-slate-300">
                                <User className="w-4 h-4" />
-                             </div>
-                           )}
-                        </div>
-                      </td>
-
-                      {/* CAD Column */}
-                      <td className="px-6 py-6">
-                        <div className="flex flex-col items-center gap-2">
-                           {cad ? (
-                             <>
-                               <div className="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center border border-purple-500/20">
-                                 <span className="text-xs font-bold text-purple-600">{cad.profiles.first_name[0]}{cad.profiles.last_name[0]}</span>
-                               </div>
-                               <div className="flex items-center gap-1.5">
-                                  <span className="text-xs font-bold text-slate-600 dark:text-slate-400">{cad.profiles.first_name}</span>
-                                  {getFileStatus(project, 'prototype') && <CheckCircle2 className="w-3 h-3 text-emerald-500" />}
-                               </div>
-                             </>
-                           ) : (
-                             <div className="w-10 h-10 rounded-full border-2 border-dashed border-slate-200 dark:border-white/10 flex items-center justify-center text-slate-300">
-                               <PenTool className="w-4 h-4" />
                              </div>
                            )}
                         </div>

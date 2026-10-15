@@ -22,7 +22,7 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PremiumDatePicker } from '@/components/ui/PremiumDatePicker';
-import { CreateInvoiceModal } from './CreateInvoiceModal';
+import { LogPaymentModal } from './LogPaymentModal';
 import {
   updateMilestoneStatusAction,
   rescheduleMilestoneAction,
@@ -141,8 +141,8 @@ export function MilestonePaymentsTable({ milestones, onRefresh, searchQuery }: M
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
 
 
-  const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
-  const [selectedInvoiceMilestone, setSelectedInvoiceMilestone] = useState<MilestonePayment | null>(null);
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [selectedPaymentMilestone, setSelectedPaymentMilestone] = useState<MilestonePayment | null>(null);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -364,7 +364,7 @@ export function MilestonePaymentsTable({ milestones, onRefresh, searchQuery }: M
                 : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
             )}
           >
-            Paid
+            Paid ({milestones.filter((m: any) => m.status === 'paid').length})
           </button>
         </div>
 
@@ -402,9 +402,17 @@ export function MilestonePaymentsTable({ milestones, onRefresh, searchQuery }: M
                     {/* Tinted Icon Box */}
                     <div className="min-w-0 flex-1 flex flex-col justify-center">
                       <div className="flex flex-col justify-center">
-                        <span className="text-[15px] font-medium text-slate-900 dark:text-white leading-tight block mb-1.5 truncate" title={m.projects?.name || 'Standalone Assignment'}>
-                          {m.projects?.name || 'Standalone Assignment'}
-                        </span>
+                        <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                          <span className="text-[15px] font-semibold text-slate-900 dark:text-white leading-tight truncate" title={m.projects?.name || 'Standalone Assignment'}>
+                            {m.projects?.name || 'Standalone Assignment'}
+                          </span>
+                          {m.title && (
+                            <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-500/20 truncate max-w-[260px]" title={m.title}>
+                              <Target className="w-3 h-3 flex-shrink-0" />
+                              <span className="truncate">{m.title}</span>
+                            </span>
+                          )}
+                        </div>
                         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400 font-medium">
                           <span className="flex items-center gap-1.5">
                             <Building className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 flex-shrink-0" />
@@ -506,18 +514,15 @@ export function MilestonePaymentsTable({ milestones, onRefresh, searchQuery }: M
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setSelectedInvoiceMilestone(m);
-                            setInvoiceModalOpen(true);
+                            setSelectedPaymentMilestone(m);
+                            setPaymentModalOpen(true);
                           }}
-                          disabled={isProjectFrozen || !!getActiveInvoice(m)}
-                          title={isProjectFrozen ? "Project is frozen. Resume project to create invoice." : getActiveInvoice(m) ? "An invoice already exists for this milestone." : "Create Invoice"}
-                          className={cn(
-                            "h-8 px-3 rounded-lg text-xs font-semibold border border-indigo-600 text-indigo-600 dark:border-indigo-500/50 dark:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 shadow-sm transition-all active:scale-95 flex items-center justify-center gap-1.5 whitespace-nowrap",
-                            (isProjectFrozen || !!getActiveInvoice(m)) && "opacity-50 cursor-not-allowed active:scale-100"
-                          )}
+                          disabled={isProjectFrozen}
+                          title={isProjectFrozen ? "Project is frozen. Resume project to log payment." : "Log payment for milestone"}
+                          className="h-8 px-3 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm transition-all active:scale-95 flex items-center justify-center gap-1.5 whitespace-nowrap disabled:opacity-50"
                         >
-                          <FilePlus className="w-3.5 h-3.5" />
-                          {getActiveInvoice(m) ? 'Invoice Created' : 'Create PF Invoice'}
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          Log Payment
                         </button>
 
                         <button
@@ -806,22 +811,19 @@ export function MilestonePaymentsTable({ milestones, onRefresh, searchQuery }: M
       )}
 
 
-      <CreateInvoiceModal
-        isOpen={invoiceModalOpen}
-        onOpenChange={(open) => {
-          setInvoiceModalOpen(open);
-          if (!open) setSelectedInvoiceMilestone(null);
+      <LogPaymentModal
+        isOpen={paymentModalOpen}
+        onClose={() => {
+          setPaymentModalOpen(false);
+          setSelectedPaymentMilestone(null);
         }}
-        projectId={selectedInvoiceMilestone?.project_id || ''}
-        projectName={selectedInvoiceMilestone?.projects?.name || ''}
-        clientName={selectedInvoiceMilestone?.projects?.client_name || ''}
-        milestoneId={selectedInvoiceMilestone?.id || ''}
-        milestoneTitle={selectedInvoiceMilestone?.title || ''}
-        milestoneDueDate={selectedInvoiceMilestone?.due_date || null}
-        initialAmount={selectedInvoiceMilestone?.amount || 0}
+        projectId={selectedPaymentMilestone?.project_id || ''}
+        milestoneTitle={selectedPaymentMilestone?.title || ''}
+        milestoneId={selectedPaymentMilestone?.id}
+        amount={selectedPaymentMilestone?.amount || 0}
         onSuccess={() => {
-          setInvoiceModalOpen(false);
-          setSelectedInvoiceMilestone(null);
+          setPaymentModalOpen(false);
+          setSelectedPaymentMilestone(null);
           onRefresh();
         }}
       />

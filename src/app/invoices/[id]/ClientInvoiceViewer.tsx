@@ -50,14 +50,6 @@ export function ClientInvoiceViewer({ invoice, companySettings }: ClientInvoiceV
   const remainingAmount = Math.max(0, totalAmount - amountPaid);
 
   let projectBudget = Number(invoice.projects?.budget) || 0;
-  if (projectBudget === 0 && invoice.projects?.quotations && invoice.projects.quotations.length > 0) {
-    const approvedQuotation = invoice.projects.quotations.find((q: any) => q.status?.toLowerCase() === 'approved');
-    if (approvedQuotation) {
-      projectBudget = Number(approvedQuotation.total_amount);
-    } else {
-      projectBudget = Math.max(...invoice.projects.quotations.map((q: any) => Number(q.total_amount)));
-    }
-  }
   const projectPayments = invoice.projects?.payments || [];
   const projectVerifiedPayments = projectPayments.filter((p: any) => p.status === 'verified' || p.status === 'paid');
   let projectAmountPaid = projectVerifiedPayments.reduce((sum: number, p: any) => sum + Number(p.amount), 0);
@@ -65,7 +57,7 @@ export function ClientInvoiceViewer({ invoice, companySettings }: ClientInvoiceV
     projectAmountPaid = amountPaid;
   }
   const projectAmountRemaining = Math.max(0, projectBudget - projectAmountPaid);
-  const gstType = invoice.projects?.quotations?.[0]?.client_details?.gst_type || 'CGST_SGST';
+  const gstType: string = 'CGST_SGST';
   const gstRate = Number(
     invoice.gst_rate ?? (
       Number(invoice.amount) > 0

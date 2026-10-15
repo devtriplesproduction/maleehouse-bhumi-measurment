@@ -24,6 +24,10 @@ interface ClientReceiptViewerProps {
     originalId: string;
     projectId?: string;
     clientGstNumber?: string | null;
+    gstType?: 'no_gst' | 'cgst_sgst_2_5' | 'cgst_sgst_5' | string;
+    gstRate?: number;
+    baseAmount?: number;
+    gstAmount?: number;
   };
   companySettings: CompanySettings | null;
 }
@@ -40,6 +44,21 @@ export function ClientReceiptViewer({ receipt, companySettings }: ClientReceiptV
   const handlePrint = () => {
     window.print();
   };
+
+  const gstRate = receipt.gstRate ?? (receipt.gstType === 'cgst_sgst_5' ? 10 : receipt.gstType === 'cgst_sgst_2_5' ? 5 : 0);
+  const totalAmount = Number(receipt.amount) || 0;
+  
+  let baseAmount = totalAmount;
+  let totalGst = 0;
+  let cgst = 0;
+  let sgst = 0;
+
+  if (gstRate > 0) {
+    baseAmount = Math.round(totalAmount / (1 + gstRate / 100));
+    totalGst = totalAmount - baseAmount;
+    cgst = Math.round(totalGst / 2);
+    sgst = totalGst - cgst;
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-[#0a0a0a] flex justify-center py-12 px-4 print:bg-white print:p-0 print:py-0">
@@ -162,7 +181,28 @@ export function ClientReceiptViewer({ receipt, companySettings }: ClientReceiptV
 
            {/* Totals panel */}
            <div className="border-t-2 border-double border-slate-900 pt-6 mt-8 flex justify-end">
-              <div className="w-full md:w-72 space-y-2.5">
+              <div className="w-full md:w-80 space-y-2.5 text-xs text-slate-600">
+                 <div className="flex justify-between items-center">
+                    <span>Taxable Base Value:</span>
+                    <span className="font-semibold text-slate-900 nums">{formatCurrency(baseAmount)}</span>
+                 </div>
+                 {gstRate > 0 ? (
+                    <>
+                       <div className="flex justify-between items-center">
+                          <span>CGST ({gstRate / 2}%):</span>
+                          <span className="font-semibold text-slate-900 nums">{formatCurrency(cgst)}</span>
+                       </div>
+                       <div className="flex justify-between items-center">
+                          <span>SGST ({gstRate / 2}%):</span>
+                          <span className="font-semibold text-slate-900 nums">{formatCurrency(sgst)}</span>
+                       </div>
+                    </>
+                 ) : (
+                    <div className="flex justify-between items-center text-slate-400 italic text-[11px]">
+                       <span>GST Rate:</span>
+                       <span>Exempt / Nil Rated (0% CGST + 0% SGST)</span>
+                    </div>
+                 )}
                  <div className="pt-3 border-t border-slate-200 flex justify-between items-end">
                     <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-600">Total Payout Received</p>
                     <p className="text-xl font-bold text-slate-900 tracking-tight nums">{formatCurrency(receipt.amount)}</p>

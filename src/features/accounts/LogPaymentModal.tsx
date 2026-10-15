@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { CreditCard, FileText, Loader2, X } from 'lucide-react';
 import { logPaymentAction } from '@/actions/finance.actions';
 import { BankAccountSelector } from '@/components/ui/BankAccountSelector';
+import { Select, SelectItem } from '@/components/ui/select';
 import { toast } from 'sonner';
 
 interface LogPaymentModalProps {
@@ -135,20 +136,19 @@ export function LogPaymentModal({
                   Payment Method
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
                     <CreditCard className="w-4 h-4 text-slate-400" />
                   </div>
-                  <select
+                  <Select
                     value={method}
-                    onChange={e => setMethod(e.target.value)}
-                    required
-                    className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                    onValueChange={setMethod}
+                    buttonClassName="pl-10"
                   >
-                    <option value="Bank Transfer">Bank Transfer (NEFT/RTGS)</option>
-                    <option value="UPI">UPI</option>
-                    <option value="Cheque">Cheque</option>
-                    <option value="Cash">Cash</option>
-                  </select>
+                    <SelectItem value="Bank Transfer">Bank Transfer (NEFT/RTGS)</SelectItem>
+                    <SelectItem value="UPI">UPI</SelectItem>
+                    <SelectItem value="Cheque">Cheque</SelectItem>
+                    <SelectItem value="Cash">Cash</SelectItem>
+                  </Select>
                 </div>
               </div>
 

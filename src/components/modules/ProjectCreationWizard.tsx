@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useForm, FormProvider, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import PhoneInput from 'react-phone-number-input';
@@ -161,6 +161,13 @@ export function ProjectCreationWizard() {
   const [step, setStep] = useState(1);
   const [activeCategory, setActiveCategory] = useState<string>("Plot measurement");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTo({ top: 0, behavior: 'instant' });
+    }
+  }, [step]);
 
   const methods = useForm<ProjectFormValues>({
     resolver: zodResolver(createProjectSchema),
@@ -239,7 +246,7 @@ export function ProjectCreationWizard() {
           description: result.error || 'The system was unable to save the new project.',
         });
       }
-    } catch(err) {
+    } catch (err) {
       toast.error('System Failure', {
         description: 'Failed to communicate with the server database.',
       });
@@ -324,7 +331,7 @@ export function ProjectCreationWizard() {
           <div className="flex-1 flex flex-col overflow-hidden bg-white/50 dark:bg-[#0c101f]/50">
 
             {/* Form Fields */}
-            <div className="flex-1 overflow-y-auto p-10 custom-scrollbar">
+            <div ref={scrollRef} className="flex-1 overflow-y-auto p-10 custom-scrollbar">
               <FormProvider {...methods}>
                 <form
                   id="wizard-form"
@@ -754,9 +761,7 @@ export function ProjectCreationWizard() {
                                     </Select>
                                   )}
                                 />
-                                <p className="text-[11px] text-slate-400 px-1">
-                                  Tax slab for milestone receipts & settlement.
-                                </p>
+
                               </div>
                             </div>
 
@@ -805,8 +810,8 @@ export function ProjectCreationWizard() {
                                       (watch('gst_type') === 'cgst_sgst_2_5'
                                         ? Math.round(Number(watch('amount') || 0) * 0.05)
                                         : watch('gst_type') === 'cgst_sgst_5'
-                                        ? Math.round(Number(watch('amount') || 0) * 0.10)
-                                        : 0)
+                                          ? Math.round(Number(watch('amount') || 0) * 0.10)
+                                          : 0)
                                     ).toLocaleString('en-IN')}
                                   </span>
                                 </div>
@@ -821,56 +826,56 @@ export function ProjectCreationWizard() {
 
                             <div className="border-b border-slate-200/60 dark:border-white/5 pb-5">
                               <p className={cn("text-xs font-medium uppercase tracking-widest mb-1", c.text)}>Project Name</p>
-                              <h4 className="text-2xl font-medium tracking-tight text-slate-800 dark:text-white">{watch('name')}</h4>
+                              <h4 className="text-2xl font-medium tracking-tight text-slate-800 dark:text-white break-words">{watch('name')}</h4>
                             </div>
 
                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-6 text-slate-600 dark:text-slate-300">
-                              <div className="space-y-1">
+                              <div className="space-y-1 min-w-0">
                                 <p className="text-xs font-medium text-slate-400 dark:text-slate-550 uppercase tracking-widest">Client Name</p>
-                                <p className="text-sm font-medium text-slate-800 dark:text-white">{watch('client_name')}</p>
+                                <p className="text-sm font-medium text-slate-800 dark:text-white break-words">{watch('client_name')}</p>
                               </div>
 
                               {watch('gst_number') && (
-                                <div className="space-y-1">
+                                <div className="space-y-1 min-w-0">
                                   <p className="text-xs font-medium text-slate-400 dark:text-slate-550 uppercase tracking-widest">GST Number</p>
-                                  <p className="text-sm font-medium text-slate-800 dark:text-white uppercase">{watch('gst_number')}</p>
+                                  <p className="text-sm font-medium text-slate-800 dark:text-white uppercase break-all">{watch('gst_number')}</p>
                                 </div>
                               )}
 
-                              <div className="space-y-1">
+                              <div className="space-y-1 min-w-0">
                                 <p className="text-xs font-medium text-slate-400 dark:text-slate-550 uppercase tracking-widest">Contact Phone</p>
                                 <p className="text-sm font-medium text-slate-800 dark:text-white">{watch('phone')}</p>
                               </div>
 
-                              <div className="space-y-1">
+                              <div className="space-y-1 min-w-0">
                                 <p className="text-xs font-medium text-slate-400 dark:text-slate-550 uppercase tracking-widest">Email Address</p>
-                                <p className="text-sm font-medium text-slate-800 dark:text-white">{watch('email') || 'Not provided'}</p>
+                                <p className="text-sm font-medium text-slate-800 dark:text-white break-all" title={watch('email')}>{watch('email') || 'Not provided'}</p>
                               </div>
 
-                              <div className="space-y-1">
+                              <div className="space-y-1 min-w-0">
                                 <p className="text-xs font-medium text-slate-400 dark:text-slate-550 uppercase tracking-widest">Site Type</p>
                                 <p className="text-sm font-medium text-slate-800 dark:text-white capitalize">{watch('site_type')}</p>
                               </div>
 
-                              <div className="space-y-1">
+                              <div className="space-y-1 min-w-0">
                                 <p className="text-xs font-medium text-slate-400 dark:text-slate-550 uppercase tracking-widest">Base Value</p>
                                 <p className="text-sm font-semibold text-slate-800 dark:text-white">
                                   ₹{Number(watch('amount') || 0).toLocaleString('en-IN')}
                                 </p>
                               </div>
 
-                              <div className="space-y-1">
+                              <div className="space-y-1 min-w-0">
                                 <p className="text-xs font-medium text-slate-400 dark:text-slate-550 uppercase tracking-widest">GST Type</p>
                                 <p className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">
                                   {watch('gst_type') === 'cgst_sgst_2_5'
                                     ? '2.5% CGST + 2.5% SGST (5%)'
                                     : watch('gst_type') === 'cgst_sgst_5'
-                                    ? '5% CGST + 5% SGST (10%)'
-                                    : 'No CGST / SGST (Exempt)'}
+                                      ? '5% CGST + 5% SGST (10%)'
+                                      : 'No CGST / SGST (Exempt)'}
                                 </p>
                               </div>
 
-                              <div className="space-y-1">
+                              <div className="space-y-1 min-w-0">
                                 <p className="text-xs font-medium text-slate-400 dark:text-slate-550 uppercase tracking-widest">Total Contract Value</p>
                                 <p className="text-base font-bold text-emerald-600 dark:text-emerald-400">
                                   ₹{(
@@ -878,8 +883,8 @@ export function ProjectCreationWizard() {
                                     (watch('gst_type') === 'cgst_sgst_2_5'
                                       ? Math.round(Number(watch('amount') || 0) * 0.05)
                                       : watch('gst_type') === 'cgst_sgst_5'
-                                      ? Math.round(Number(watch('amount') || 0) * 0.10)
-                                      : 0)
+                                        ? Math.round(Number(watch('amount') || 0) * 0.10)
+                                        : 0)
                                   ).toLocaleString('en-IN')}
                                 </p>
                               </div>
@@ -888,7 +893,7 @@ export function ProjectCreationWizard() {
 
                             <div className="border-t border-slate-200/60 dark:border-white/5 pt-4 space-y-1">
                               <p className="text-xs font-medium text-slate-400 dark:text-slate-550 uppercase tracking-widest">Site Location Address</p>
-                              <p className="text-xs font-semibold leading-relaxed text-slate-700 dark:text-slate-200">{watch('client_address')}</p>
+                              <p className="text-xs font-semibold leading-relaxed text-slate-700 dark:text-slate-200 break-words">{watch('client_address')}</p>
                             </div>
 
                             <div className="border-t border-slate-200/60 dark:border-white/5 pt-4 space-y-2">

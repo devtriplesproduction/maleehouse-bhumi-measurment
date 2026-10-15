@@ -18,10 +18,10 @@ export async function getGlobalStatsAction(): Promise<StatItem[]> {
       { count: fieldCount },
       { count: completedCount }
     ] = await Promise.all([
-      supabase.from('projects').select('id', { count: 'exact', head: true }).is('deleted_at', null),
-      supabase.from('projects').select('id', { count: 'exact', head: true }).is('deleted_at', null).eq('status', 'payment_pending'),
-      supabase.from('projects').select('id', { count: 'exact', head: true }).is('deleted_at', null).eq('status', 'field_work'),
-      supabase.from('projects').select('id', { count: 'exact', head: true }).is('deleted_at', null).eq('status', 'completed')
+      supabase.from('projects').select('id', { count: 'exact', head: true }).is('deleted_at', null).neq('id', 'PRJ-PRINT-DESK'),
+      supabase.from('projects').select('id', { count: 'exact', head: true }).is('deleted_at', null).neq('id', 'PRJ-PRINT-DESK').eq('status', 'payment_pending'),
+      supabase.from('projects').select('id', { count: 'exact', head: true }).is('deleted_at', null).neq('id', 'PRJ-PRINT-DESK').eq('status', 'field_work'),
+      supabase.from('projects').select('id', { count: 'exact', head: true }).is('deleted_at', null).neq('id', 'PRJ-PRINT-DESK').eq('status', 'completed')
     ]);
 
     return [
@@ -48,9 +48,9 @@ export async function getSalesStatsAction(): Promise<StatItem[]> {
       { count: pipelineCount },
       { count: paymentCount }
     ] = await Promise.all([
-      supabase.from('projects').select('id', { count: 'exact', head: true }).is('deleted_at', null).eq('status', 'lead_created'),
-      supabase.from('projects').select('id', { count: 'exact', head: true }).is('deleted_at', null).in('status', ['lead_created', 'payment_pending']),
-      supabase.from('projects').select('id', { count: 'exact', head: true }).is('deleted_at', null).eq('status', 'payment_pending')
+      supabase.from('projects').select('id', { count: 'exact', head: true }).is('deleted_at', null).neq('id', 'PRJ-PRINT-DESK').eq('status', 'lead_created'),
+      supabase.from('projects').select('id', { count: 'exact', head: true }).is('deleted_at', null).neq('id', 'PRJ-PRINT-DESK').in('status', ['lead_created', 'payment_pending']),
+      supabase.from('projects').select('id', { count: 'exact', head: true }).is('deleted_at', null).neq('id', 'PRJ-PRINT-DESK').eq('status', 'payment_pending')
     ]);
 
     return [
@@ -103,8 +103,8 @@ export async function getAccountantStatsAction(): Promise<StatItem[]> {
       { count: totalMilestones },
       { data: recentPayments }
     ] = await Promise.all([
-      supabase.from('projects').select('id', { count: 'exact', head: true }).is('deleted_at', null).gte('created_at', firstOfMonth),
-      supabase.from('projects').select('id', { count: 'exact', head: true }).is('deleted_at', null).not('status', 'in', '("completed","archived")'),
+      supabase.from('projects').select('id', { count: 'exact', head: true }).is('deleted_at', null).neq('id', 'PRJ-PRINT-DESK').gte('created_at', firstOfMonth),
+      supabase.from('projects').select('id', { count: 'exact', head: true }).is('deleted_at', null).neq('id', 'PRJ-PRINT-DESK').not('status', 'in', '("completed","archived")'),
       supabase.from('project_milestones').select('id', { count: 'exact', head: true }),
       supabase.from('payments').select('amount').in('status', ['verified', 'paid']).gte('created_at', firstOfMonth),
     ]);
@@ -135,6 +135,7 @@ export async function getQCStatsAction(): Promise<StatItem[]> {
       .select('id', { count: 'exact', head: true })
       .in('status', ['review'])
       .is('deleted_at', null)
+      .neq('id', 'PRJ-PRINT-DESK')
 
     return [
       { label: 'Pending Reviews', value: reviewCount || 0, trend: reviewCount ? 'Urgent' : 'Clear', description: 'Projects awaiting QC sign-off' },
@@ -174,9 +175,9 @@ export async function getOperationsStatsAction(): Promise<StatItem[]> {
       { count: qcBacklog },
       { count: alertCount }
     ] = await Promise.all([
-      supabase.from('projects').select('*', { count: 'exact', head: true }).is('deleted_at', null).in('status', ['data_collection', 'prototype']),
-      supabase.from('projects').select('*', { count: 'exact', head: true }).is('deleted_at', null).eq('status', 'field_work'),
-      supabase.from('projects').select('*', { count: 'exact', head: true }).is('deleted_at', null).in('status', ['review']),
+      supabase.from('projects').select('*', { count: 'exact', head: true }).is('deleted_at', null).neq('id', 'PRJ-PRINT-DESK').in('status', ['data_collection', 'prototype']),
+      supabase.from('projects').select('*', { count: 'exact', head: true }).is('deleted_at', null).neq('id', 'PRJ-PRINT-DESK').eq('status', 'field_work'),
+      supabase.from('projects').select('*', { count: 'exact', head: true }).is('deleted_at', null).neq('id', 'PRJ-PRINT-DESK').in('status', ['review']),
       supabase.from('tasks').select('*', { count: 'exact', head: true }).neq('status', 'completed').lt('due_date', now)
     ]);
     

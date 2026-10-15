@@ -173,7 +173,7 @@ export function EODReview({ reports, staff, currentUserRole, currentUserId, hide
         </div>
 
         {/* From Date */}
-        <div className="w-full md:w-48 space-y-2">
+        <div className="w-full md:w-56 space-y-2">
           <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block ml-1">From</label>
           <PremiumDatePicker 
             value={fromDate} 
@@ -183,7 +183,7 @@ export function EODReview({ reports, staff, currentUserRole, currentUserId, hide
         </div>
 
         {/* To Date */}
-        <div className="w-full md:w-48 space-y-2">
+        <div className="w-full md:w-56 space-y-2">
           <label className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block ml-1">To</label>
           <PremiumDatePicker 
             value={toDate} 

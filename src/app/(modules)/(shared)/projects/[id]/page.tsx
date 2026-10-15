@@ -354,6 +354,10 @@ async function ProjectContentWrapper({ project, profile, user, role, theme, para
 export default async function ProjectDetailPage({ params }: ProjectDetailPageProps) {
   const supabase: any = await createClient();
 
+  if (params.id === 'PRJ-PRINT-DESK') {
+    redirect('/prints');
+  }
+
   // 1. Fetch Core Project Data
   const { data: project } = await supabase.from('projects').select('*').eq('id', params.id).is('deleted_at', null).single() as { data: any };
 

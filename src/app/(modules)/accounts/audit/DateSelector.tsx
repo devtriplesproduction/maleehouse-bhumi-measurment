@@ -17,7 +17,7 @@ export default function DateSelector({ currentDate }: { currentDate: string }) {
   };
 
   return (
-    <div className="w-full sm:w-[180px]">
+    <div className="w-full sm:w-[200px]">
       <PremiumDatePicker
         value={currentDate}
         onChange={handleDateChange}

@@ -64,6 +64,7 @@ export async function getClientsAction(): Promise<ActionResponse> {
       .from('projects')
       .select('id, client_name, client_contact, client_address, name, status, created_at')
       .is('deleted_at', null)
+      .neq('id', 'PRJ-PRINT-DESK')
       .order('created_at', { ascending: false })
       .limit(500);
 

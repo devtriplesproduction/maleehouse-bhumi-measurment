@@ -1768,7 +1768,7 @@ export async function getProjectBillingSummaryAction(filterProjectIds?: string[]
 
     const supabase: any = await createClient();
 
-    let query = supabase.from('projects').select('id, name, client_name, budget, status').is('deleted_at', null);
+    let query = supabase.from('projects').select('id, name, client_name, budget, status').is('deleted_at', null).neq('id', 'PRJ-PRINT-DESK');
     
     // Apply role-based filtering if needed (like in getInvoicesAction)
     if (auth.role !== 'admin' && auth.role !== 'accountant') {
@@ -2234,7 +2234,7 @@ export async function getLedgerWorkspaceDataAction(): Promise<ActionResponse> {
       }
     }
 
-    const projectsQuery = supabase.from('projects').select('id, name');
+    const projectsQuery = supabase.from('projects').select('id, name').neq('id', 'PRJ-PRINT-DESK');
     const invoicesQuery = supabase.from('invoices').select('id, created_at, project_id, invoice_number, total_amount, status');
     const paymentsQuery = supabase.from('payments').select('id, created_at, payment_date, project_id, transaction_id, payment_method, amount, status, receipt_url, bank_accounts(bank_name)');
     const expensesQuery = supabase.from('expenses').select('id, expense_date, project_id, category, description, amount, status, receipt_url, profiles(first_name, last_name), bank_accounts(bank_name)');

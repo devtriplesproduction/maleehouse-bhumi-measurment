@@ -919,25 +919,25 @@ export function ReportsGenerator() {
           {/* Premium Date Pickers wrapped in a non-wrapping flex row */}
           {!['balance_sheet', 'project_statement', 'project_budget_sheet', 'project_actual_sheet'].includes(reportType) && (
             <div className="flex items-center gap-2.5 flex-nowrap shrink-0">
-              <div className="w-[140px] sm:w-[170px]">
+              <div className="w-[200px] sm:w-[220px] shrink-0">
                 <PremiumDatePicker
                   value={dateFrom}
                   onChange={setDateFrom}
                   align="left"
                   className="w-full"
-                  triggerClassName="text-sm font-semibold h-11 py-2.5 px-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800"
+                  triggerClassName="text-sm font-semibold h-11 py-2.5 px-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800"
                 />
               </div>
 
               <span className="text-slate-400 text-sm font-bold shrink-0">to</span>
 
-              <div className="w-[140px] sm:w-[170px]">
+              <div className="w-[200px] sm:w-[220px] shrink-0">
                 <PremiumDatePicker
                   value={dateTo}
                   onChange={setDateTo}
                   align="left"
                   className="w-full"
-                  triggerClassName="text-sm font-semibold h-11 py-2.5 px-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800"
+                  triggerClassName="text-sm font-semibold h-11 py-2.5 px-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800"
                 />
               </div>
             </div>

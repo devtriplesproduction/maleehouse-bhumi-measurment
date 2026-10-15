@@ -106,6 +106,10 @@ assert(
     read('next.config.mjs').includes('Strict-Transport-Security'),
   'CSP and HSTS headers configured'
 )
+assert(
+  read('src/actions/project.actions.ts').includes(".neq('id', 'PRJ-PRINT-DESK')"),
+  'Project directory excludes PRJ-PRINT-DESK generic print jobs placeholder'
+)
 
 console.log(failed ? `\n${failed} invariant(s) failed\n` : '\nAll critical invariants OK\n')
 process.exit(failed ? 1 : 0)

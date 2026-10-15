@@ -28,6 +28,8 @@ export async function globalSearchAction(query: string) {
     const { data: projects } = await supabase
       .from("projects")
       .select("id, name, client_name, status")
+      .neq("id", "PRJ-PRINT-DESK")
+      .is("deleted_at", null)
       .or(`name.ilike.${searchTerm},client_name.ilike.${searchTerm}`)
       .limit(5);
 

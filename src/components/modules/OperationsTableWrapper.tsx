@@ -35,6 +35,7 @@ export async function OperationsTableWrapper() {
       )
     `)
     .neq('status', 'archived')
+    .neq('id', 'PRJ-PRINT-DESK')
     .is('deleted_at', null)
     .order('updated_at', { ascending: false })
     .limit(100);

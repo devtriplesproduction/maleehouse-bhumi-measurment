@@ -153,7 +153,7 @@ export async function createProjectAction(payload: CreateProjectInput): Promise<
       await supabase.from('project_milestones').insert([{
         id: `mil-${Date.now()}-${Math.random().toString(36).substring(2, 6)}-0`,
         project_id: projectId,
-        title: 'Mobilization / Advance Payment',
+        title: 'Advance Payment',
         description: `Initial project milestone (${methodLabel} - ${gstLabel})`,
         amount: totalContractAmount,
         due_date: validatedFields.data.target_completion_date || null,
@@ -182,8 +182,8 @@ export async function createProjectAction(payload: CreateProjectInput): Promise<
       project_id: projectId,
       user_id: profile.id,
       action: "PROJECT_CREATED",
-      details: { 
-        name: validatedFields.data.name, 
+      details: {
+        name: validatedFields.data.name,
         client_name: validatedFields.data.client_name,
         amount: totalContractAmount,
         base_amount: baseCommercialAmount,
@@ -226,7 +226,7 @@ export async function updateProjectAction(
   try {
     const profile: any = await getUserProfileAction();
     if (!profile) return { success: false, error: 'Unauthorized' };
-    
+
     if (!(await checkActionRateLimit(profile.id, 'updateProjectAction', 30, 60 * 1000))) {
       return { success: false, error: 'Rate limit exceeded for this action. Please try again later.' };
     }
@@ -245,7 +245,7 @@ export async function updateProjectAction(
     }
 
     const supabase: any = await createClient();
-    
+
     // Get old value for audit log
     const { data: oldProject } = await supabase
       .from('projects')
@@ -293,14 +293,14 @@ export async function deleteProjectAction(projectId: string): Promise<ActionResp
     }
 
     const supabase: any = await createClient();
-    
+
     // Get old value for audit log
     const { data: oldProject } = await supabase
       .from('projects')
       .select('*')
       .eq('id', projectId)
       .single();
-      
+
     const { data: updated, error } = await supabase
       .from('projects')
       .delete()
@@ -571,126 +571,127 @@ import { trackPerformance } from '@/lib/diagnostics/performanceTracker';
  */
 export async function getProjectsListAction(params?: ProjectsListQuery): Promise<ActionResponse> {
   return trackPerformance('getProjectsListAction', async () => {
-  try {
-    const { unstable_noStore: noStore } = await import('next/cache');
-    noStore();
-    const profile: any = await getUserProfileAction();
-    if (!profile) return { success: false, error: 'Unauthorized' };
+    try {
+      const { unstable_noStore: noStore } = await import('next/cache');
+      noStore();
+      const profile: any = await getUserProfileAction();
+      if (!profile) return { success: false, error: 'Unauthorized' };
 
-    const role = profile.role as Role;
-    const isGlobalRole = ['admin', 'sales', 'accountant', 'hr'].includes(role);
-    const paginated = params?.page != null && params.page >= 1;
-    const page = paginated ? Math.max(1, Math.floor(params!.page!)) : 1;
-    const pageSize = Math.min(100, Math.max(1, Math.floor(params?.pageSize || (paginated ? 10 : 500))));
-    const search = params?.search ? sanitizeSearch(params.search) : '';
-    const status = params?.status && params.status !== 'all' ? params.status : '';
-    const client = params?.client && params.client !== 'all' ? params.client : '';
+      const role = profile.role as Role;
+      const isGlobalRole = ['admin', 'sales', 'accountant', 'hr'].includes(role);
+      const paginated = params?.page != null && params.page >= 1;
+      const page = paginated ? Math.max(1, Math.floor(params!.page!)) : 1;
+      const pageSize = Math.min(100, Math.max(1, Math.floor(params?.pageSize || (paginated ? 10 : 500))));
+      const search = params?.search ? sanitizeSearch(params.search) : '';
+      const status = params?.status && params.status !== 'all' ? params.status : '';
+      const client = params?.client && params.client !== 'all' ? params.client : '';
 
-    const supabase: any = await createClient();
+      const supabase: any = await createClient();
 
-    let assignedIds: string[] | null = null;
-    if (!isGlobalRole) {
-      const { data: assignments, error: aError } = await supabase
-        .from('project_assignments')
-        .select('project_id')
-        .eq('user_id', profile.id);
-      if (aError) throw aError;
-      assignedIds = (assignments || []).map((a: any) => a.project_id);
-      if (assignedIds!.length === 0) {
-        if (paginated) {
-          return {
-            success: true,
-            data: { items: [], total: 0, page, pageSize, clients: [] } satisfies ProjectsListPage,
-          };
-        }
-        return { success: true, data: [] };
-      }
-    }
-
-    const applyFilters = (q: any) => {
-      let query = q.neq('status', 'archived').is('deleted_at', null);
-      if (assignedIds) query = query.in('id', assignedIds);
-      if (client) query = query.eq('client_name', client);
-      if (status) {
-        if (role === 'sales' && status === 'send_to_accountant') {
-          query = query.eq('status', 'payment_pending');
-        } else {
-          query = query.eq('status', status);
+      let assignedIds: string[] | null = null;
+      if (!isGlobalRole) {
+        const { data: assignments, error: aError } = await supabase
+          .from('project_assignments')
+          .select('project_id')
+          .eq('user_id', profile.id);
+        if (aError) throw aError;
+        assignedIds = (assignments || []).map((a: any) => a.project_id);
+        if (assignedIds!.length === 0) {
+          if (paginated) {
+            return {
+              success: true,
+              data: { items: [], total: 0, page, pageSize, clients: [] } satisfies ProjectsListPage,
+            };
+          }
+          return { success: true, data: [] };
         }
       }
-      if (search) {
-        query = query.or(
-          `name.ilike.%${search}%,id.ilike.%${search}%,client_name.ilike.%${search}%`
-        );
-      }
-      return query;
-    };
 
-    // Lightweight client names for filter dropdown (paginated mode only)
-    let clients: string[] = [];
-    if (paginated) {
-      let clientsQuery = supabase
-        .from('projects')
-        .select('client_name')
-        .neq('status', 'archived')
-        .is('deleted_at', null)
-        .not('client_name', 'is', null)
-        .limit(500);
-      if (assignedIds) clientsQuery = clientsQuery.in('id', assignedIds);
-      const { data: clientRows } = await clientsQuery;
-      clients = Array.from(
-        new Set((clientRows || []).map((r: any) => r.client_name).filter(Boolean))
-      ).sort() as string[];
-    }
-
-    const from = (page - 1) * pageSize;
-    const to = from + pageSize - 1;
-
-    let listQuery = applyFilters(
-      supabase.from('projects').select(PROJECT_LIST_SELECT, paginated ? { count: 'exact' } : undefined)
-    ).order('created_at', { ascending: false });
-
-    if (paginated) {
-      listQuery = listQuery.range(from, to);
-    } else {
-      listQuery = listQuery.limit(pageSize);
-    }
-
-    const { data, error, count } = await listQuery;
-    if (error) throw error;
-
-    const items = normalizeData(data || []);
-
-    if (paginated) {
-      return {
-        success: true,
-        data: {
-          items,
-          total: count ?? items.length,
-          page,
-          pageSize,
-          clients,
-        } satisfies ProjectsListPage,
+      const applyFilters = (q: any) => {
+        let query = q.neq('status', 'archived').is('deleted_at', null).neq('id', 'PRJ-PRINT-DESK');
+        if (assignedIds) query = query.in('id', assignedIds);
+        if (client) query = query.eq('client_name', client);
+        if (status) {
+          if (role === 'sales' && status === 'send_to_accountant') {
+            query = query.eq('status', 'payment_pending');
+          } else {
+            query = query.eq('status', status);
+          }
+        }
+        if (search) {
+          query = query.or(
+            `name.ilike.%${search}%,id.ilike.%${search}%,client_name.ilike.%${search}%`
+          );
+        }
+        return query;
       };
-    }
 
-    // Legacy: flat array for reports / milestones dropdowns
-    return { success: true, data: items };
-  } catch (error: any) {
-    if (error?.message?.includes('Dynamic server usage') || error?.digest === 'DYNAMIC_SERVER_USAGE') {
-      throw error;
+      // Lightweight client names for filter dropdown (paginated mode only)
+      let clients: string[] = [];
+      if (paginated) {
+        let clientsQuery = supabase
+          .from('projects')
+          .select('client_name')
+          .neq('status', 'archived')
+          .is('deleted_at', null)
+          .neq('id', 'PRJ-PRINT-DESK')
+          .not('client_name', 'is', null)
+          .limit(500);
+        if (assignedIds) clientsQuery = clientsQuery.in('id', assignedIds);
+        const { data: clientRows } = await clientsQuery;
+        clients = Array.from(
+          new Set((clientRows || []).map((r: any) => r.client_name).filter(Boolean))
+        ).sort() as string[];
+      }
+
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+
+      let listQuery = applyFilters(
+        supabase.from('projects').select(PROJECT_LIST_SELECT, paginated ? { count: 'exact' } : undefined)
+      ).order('created_at', { ascending: false });
+
+      if (paginated) {
+        listQuery = listQuery.range(from, to);
+      } else {
+        listQuery = listQuery.limit(pageSize);
+      }
+
+      const { data, error, count } = await listQuery;
+      if (error) throw error;
+
+      const items = normalizeData(data || []);
+
+      if (paginated) {
+        return {
+          success: true,
+          data: {
+            items,
+            total: count ?? items.length,
+            page,
+            pageSize,
+            clients,
+          } satisfies ProjectsListPage,
+        };
+      }
+
+      // Legacy: flat array for reports / milestones dropdowns
+      return { success: true, data: items };
+    } catch (error: any) {
+      if (error?.message?.includes('Dynamic server usage') || error?.digest === 'DYNAMIC_SERVER_USAGE') {
+        throw error;
+      }
+      import('@/lib/diagnostics/errorLogger').then(({ captureError }) => {
+        captureError({
+          message: error.message || 'Unknown error in getProjectsListAction',
+          stackTrace: error.stack,
+          module: 'Projects',
+          severity: 'HIGH',
+          path: 'getProjectsListAction'
+        });
+      }).catch(console.error);
+      return { success: false, error: error.message };
     }
-    import('@/lib/diagnostics/errorLogger').then(({ captureError }) => {
-      captureError({
-        message: error.message || 'Unknown error in getProjectsListAction',
-        stackTrace: error.stack,
-        module: 'Projects',
-        severity: 'HIGH',
-        path: 'getProjectsListAction'
-      });
-    }).catch(console.error);
-    return { success: false, error: error.message };
-  }
   });
 }
 
@@ -784,7 +785,7 @@ export async function adminHardDeleteProjectAction(projectId: string): Promise<A
 
     try {
       await supabaseAdmin.from('audit_logs').delete().eq('project_id', projectId);
-    } catch(_) {}
+    } catch (_) { }
 
     // 3. Finally, delete the project
     const { error: projErr } = await supabaseAdmin
@@ -810,21 +811,21 @@ export async function adminHardDeleteClientAction(clientName: string): Promise<A
     }
 
     const supabaseAdmin: any = await createAdminClient();
-    
+
     // Find all projects for this client
     const { data: projects, error } = await supabaseAdmin
       .from('projects')
       .select('id')
       .eq('client_name', clientName);
-      
+
     if (error) return { success: false, error: error.message };
-    
+
     if (projects && projects.length > 0) {
       for (const project of projects) {
         await adminHardDeleteProjectAction(project.id);
       }
     }
-    
+
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -838,6 +839,7 @@ export async function getActiveProjectsCountAction() {
       .from('projects')
       .select('*', { count: 'exact', head: true })
       .is('deleted_at', null)
+      .neq('id', 'PRJ-PRINT-DESK')
       .not('status', 'in', '("completed","archived")');
     if (error) throw error;
     return { success: true, data: count || 0 };
@@ -850,22 +852,24 @@ export async function getProjectStatusCountsAction() {
   try {
     const supabase: any = await createClient();
     const now = new Date().toISOString();
-    
+
     const [delayedRes, onTrackRes] = await Promise.all([
       supabase
         .from('projects')
         .select('*', { count: 'exact', head: true })
         .is('deleted_at', null)
+        .neq('id', 'PRJ-PRINT-DESK')
         .not('status', 'in', '("completed","archived")')
         .lt('deadline', now),
       supabase
         .from('projects')
         .select('*', { count: 'exact', head: true })
         .is('deleted_at', null)
+        .neq('id', 'PRJ-PRINT-DESK')
         .not('status', 'in', '("completed","archived")')
         .or(`deadline.is.null,deadline.gte.${now}`)
     ]);
-    
+
     return {
       success: true,
       data: {

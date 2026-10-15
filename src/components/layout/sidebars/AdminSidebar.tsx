@@ -20,6 +20,7 @@ import {
   Scale,
   Coins,
   PackageX,
+  Printer,
 } from "lucide-react";
 import { BaseSidebar } from "./BaseSidebar";
 
@@ -39,6 +40,7 @@ const adminLinks = [
     icon: FolderKanban,
     subLinks: [
       { title: "All Projects", href: "/projects", icon: FileText },
+      { title: "Print Desk", href: "/prints", icon: Printer },
       { title: "Lost Equipment", href: "/admin/lost-materials", icon: PackageX },
       { title: "Milestones", href: "/admin/milestones", icon: ScrollText },
       { title: "Clients", href: "/clients", icon: Briefcase },
@@ -59,6 +61,7 @@ const adminLinks = [
     icon: DollarSign,
     subLinks: [
       { title: "Billing & Collections", href: "/accounts/billing", icon: Coins },
+      { title: "Print Ledger", href: "/accounts/prints", icon: Printer },
       { title: "Payroll", href: "/admin/hr/payroll", icon: DollarSign },
       { title: "Reports", href: "/accounts/reports", icon: BarChart3 },
     ],

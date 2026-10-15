@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, LayoutDashboard, PenTool, MapPin, ClipboardCheck, FileText, BookOpen, Clock, CalendarCheck, PlaneTakeoff, Megaphone } from "lucide-react";
+import { Activity, LayoutDashboard, PenTool, MapPin, ClipboardCheck, FileText, BookOpen, Clock, CalendarCheck, PlaneTakeoff, Megaphone, Printer } from "lucide-react";
 import { BaseSidebar } from "./BaseSidebar";
 import { useUser } from "@/hooks/useUser";
 
@@ -12,6 +12,7 @@ export function OperationsSidebar() {
   if (role === "engineer") operationsLinks.push({ title: "Engineering", href: "/engineer", icon: LayoutDashboard });
   if (role === "field") operationsLinks.push({ title: "Field Operations", href: "/field", icon: MapPin });
   if (role === "engineer") operationsLinks.push({ title: "Review Queue", href: "/review", icon: ClipboardCheck });
+  if (role === "engineer") operationsLinks.push({ title: "Print Desk", href: "/prints", icon: Printer });
 
   operationsLinks.push(
     { title: "Assigned Projects", href: "/projects", icon: FileText },

@@ -21,7 +21,8 @@ import {
   BarChart2, 
   Settings, 
   Building2, 
-  ShieldAlert
+  ShieldAlert,
+  Printer
 } from "lucide-react";
 import { BaseSidebar } from "./BaseSidebar";
 import { SidebarLink } from "./BaseSidebar";
@@ -38,6 +39,7 @@ export function AccountsSidebar() {
       icon: FolderKanban,
       subLinks: [
         { title: "All Projects", href: "/projects", icon: FolderKanban },
+        { title: "Print Desk", href: "/prints", icon: Printer },
         { title: "Milestones", href: "/accounts/milestones", icon: Target },
         { title: "Billing & Collections", href: "/accounts/billing", icon: DollarSign },
       ]
@@ -48,6 +50,7 @@ export function AccountsSidebar() {
       icon: Landmark,
       subLinks: [
         { title: "Bank Accounts", href: "/accounts/banks", icon: Landmark },
+        { title: "Print Ledger", href: "/accounts/prints", icon: Printer },
         { title: "Ledger", href: "/accounts/ledger", icon: Scroll },
         { title: "Outstanding Payments", href: "/accounts/outstanding", icon: AlertCircle },
         { title: "Payroll", href: "/accounts/payroll", icon: FileText },

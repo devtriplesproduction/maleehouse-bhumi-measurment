@@ -10,7 +10,8 @@ import {
   Briefcase,
   Loader2,
   Phone,
-  Mail
+  Mail,
+  Printer
 } from 'lucide-react';
 import { updateProjectAction } from '@/actions/project.actions';
 import { assignUserToProjectAction, removeUserFromProjectAction } from '@/actions/assignment.actions';
@@ -184,14 +185,27 @@ export default function ProjectOverviewTab({
               <Briefcase className="w-4 h-4 text-indigo-500" />
               Project Details
             </h3>
-            {canEditAny && !isEditing && (
+            <div className="flex gap-2 items-center">
               <button 
-                onClick={() => setIsEditing(true)}
-                className="w-9 h-9 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-500 hover:bg-slate-200 dark:hover:bg-white/10 transition"
+                onClick={() => {
+                  const latestFile = (files || []).filter((f: any) => f.category === 'final_file' || f.category === 'prototype' || f.category === 'raw_data').sort((a: any, b: any) => new Date(b.uploaded_at || b.created_at).getTime() - new Date(a.uploaded_at || a.created_at).getTime())[0];
+                  router.push(`/prints?projectId=${project.id}&clientName=${encodeURIComponent(project.client_name || '')}&fileName=${encodeURIComponent(latestFile?.file_name || '')}`);
+                }}
+                className="px-3 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 text-xs font-semibold transition flex items-center gap-1.5"
+                title="Send drawing or document to Print Desk"
               >
-                <Edit3 className="w-4 h-4" />
+                <Printer className="w-3.5 h-3.5" />
+                Print Desk
               </button>
-            )}
+              {canEditAny && !isEditing && (
+                <button 
+                  onClick={() => setIsEditing(true)}
+                  className="w-9 h-9 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-500 hover:bg-slate-200 dark:hover:bg-white/10 transition"
+                >
+                  <Edit3 className="w-4 h-4" />
+                </button>
+              )}
+            </div>
           </div>
 
           {isEditing && (

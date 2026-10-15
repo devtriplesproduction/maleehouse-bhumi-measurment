@@ -24,9 +24,13 @@ export function BillingWorkspaceContent({
   initialPayments = []
 }: BillingWorkspaceContentProps) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"projects" | "milestones" | "receipts">("projects");
+  const [activeTab, setActiveTab] = useState<"projects" | "milestones" | "receipts" | "print_jobs">("projects");
   const [searchQuery, setSearchQuery] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const regularProjects = initialProjectsData.filter((p: any) => p.id !== 'PRJ-PRINT-DESK');
+  const regularPayments = (initialPayments || []).filter((p: any) => p.project_id !== 'PRJ-PRINT-DESK');
+  const printJobPayments = (initialPayments || []).filter((p: any) => p.project_id === 'PRJ-PRINT-DESK');
 
   const handleRefresh = () => {
     setIsRefreshing(true);
@@ -64,7 +68,7 @@ export function BillingWorkspaceContent({
               <RefreshCw className={cn("w-4 h-4", isRefreshing && "animate-spin")} />
             </button>
 
-            <ExpenseEntryTrigger projects={initialProjectsData} />
+            <ExpenseEntryTrigger projects={regularProjects} />
           </>
         }
       />
@@ -81,7 +85,7 @@ export function BillingWorkspaceContent({
           )}
         >
           <Briefcase className="w-3.5 h-3.5" />
-          Projects View ({initialProjectsData.length})
+          Projects View ({regularProjects.length})
         </button>
         <button
           onClick={() => setActiveTab("milestones")}
@@ -105,7 +109,19 @@ export function BillingWorkspaceContent({
           )}
         >
           <Receipt className="w-3.5 h-3.5" />
-          Payment Receipts ({initialPayments.filter((p: any) => p.status === 'verified').length})
+          Payment Receipts ({regularPayments.filter((p: any) => p.status === 'verified').length})
+        </button>
+        <button
+          onClick={() => setActiveTab("print_jobs")}
+          className={cn(
+            "px-4 py-2 text-[11px] font-bold rounded-lg transition-all uppercase tracking-wider flex items-center gap-2",
+            activeTab === "print_jobs"
+              ? "bg-white dark:bg-white/10 text-indigo-600 dark:text-white shadow-sm"
+              : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+          )}
+        >
+          <Receipt className="w-3.5 h-3.5" />
+          Print Jobs ({printJobPayments.filter((p: any) => p.status === 'verified').length})
         </button>
       </div>
 
@@ -114,7 +130,7 @@ export function BillingWorkspaceContent({
         <div className="lg:col-span-12 space-y-6">
           {activeTab === "projects" && (
             <ProjectBillingTable 
-              projects={initialProjectsData} 
+              projects={regularProjects} 
               onRefresh={handleRefresh} 
               searchQuery={searchQuery}
             />
@@ -128,7 +144,13 @@ export function BillingWorkspaceContent({
           )}
           {activeTab === "receipts" && (
             <PaymentReceiptsTable 
-              payments={initialPayments}
+              payments={regularPayments}
+              searchQuery={searchQuery} 
+            />
+          )}
+          {activeTab === "print_jobs" && (
+            <PaymentReceiptsTable 
+              payments={printJobPayments}
               searchQuery={searchQuery} 
             />
           )}

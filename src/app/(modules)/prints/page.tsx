@@ -1,5 +1,5 @@
 import { getUserProfileAction } from "@/actions/auth.actions";
-import { listPrintJobsAction } from "@/actions/print.actions";
+import { listPrintJobsAction, listPrintDocumentTypesAction } from "@/actions/print.actions";
 import { redirect } from "next/navigation";
 import PrintDeskClient from "./PrintDeskClient";
 import { getProjectsListAction } from "@/actions/project.actions";
@@ -10,8 +10,14 @@ export default async function PrintDeskPage({ searchParams }: { searchParams: { 
     redirect("/unauthorized");
   }
 
-  const { data: initialJobs } = await listPrintJobsAction();
-  const projectsRes: any = await getProjectsListAction({}).catch(() => ({ data: [] }));
+  const [jobsRes, docTypesRes, projectsRes]: any = await Promise.all([
+    listPrintJobsAction(),
+    listPrintDocumentTypesAction(),
+    getProjectsListAction({}).catch(() => ({ data: [] }))
+  ]);
+
+  const initialJobs = jobsRes?.data || [];
+  const initialDocTypes = docTypesRes?.data || [];
   const projects = Array.isArray(projectsRes) 
     ? projectsRes 
     : (projectsRes?.data?.projects || projectsRes?.data || []);
@@ -27,7 +33,8 @@ export default async function PrintDeskPage({ searchParams }: { searchParams: { 
   return (
     <div className="space-y-6 pb-20 animate-in fade-in duration-500">
       <PrintDeskClient 
-        initialJobs={initialJobs || []} 
+        initialJobs={initialJobs} 
+        initialDocTypes={initialDocTypes}
         userRole={profile.role} 
         projects={projects}
         urlPrefill={urlPrefill}

@@ -78,7 +78,7 @@ export function ProjectMaterialsSection({ projectId, assignments, staff, canAssi
     } else {
       fetchMaterials();
     }
-  }, [projectId, initialMaterials]);
+  }, [projectId, initialMaterials, fetchMaterials]);
 
   const handleAssignMaterial = async (e: React.FormEvent) => {
     e.preventDefault();

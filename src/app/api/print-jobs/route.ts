@@ -51,6 +51,7 @@ export async function POST(req: Request) {
       client_name: payload.client_name,
       client_phone: payload.client_phone || null,
       project_id: payload.project_id || null,
+      doc_type: payload.doc_type || null,
       file_name: payload.file_name || null,
       copies: payload.copies,
       paper_size: payload.paper_size,

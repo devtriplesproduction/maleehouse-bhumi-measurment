@@ -349,7 +349,7 @@ export function ProjectCreationWizard() {
                       <div className="flex items-end justify-between">
                         <div className="space-y-1">
                           <span className={cn("text-xs font-medium px-2.5 py-1 rounded-full uppercase tracking-wider", c.bgLight, c.text)}>
-                            Step {step} of 4
+                            Step {step} of {STEPS.length}
                           </span>
                           <h3 className="text-3xl font-medium text-slate-800 dark:text-white tracking-tight pt-2 leading-none">
                             {STEPS.find((s: any) => s.id === step)?.title}

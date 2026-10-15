@@ -77,8 +77,6 @@ export function ProjectsTable({ initialPage, userRole = 'admin' }: ProjectsTable
   const [pageData, setPageData] = useState<ProjectsListPage>(initialPage);
   const [isPending, startTransition] = useTransition();
   const [exporting, setExporting] = useState(false);
-  const skipNextFetch = React.useRef(true);
-
   // Sync initialPage when it changes due to router.refresh() or navigation
   useEffect(() => {
     setPageData(initialPage);
@@ -113,25 +111,15 @@ export function ProjectsTable({ initialPage, userRole = 'admin' }: ProjectsTable
     [pageSize, debouncedSearch, statusFilter, clientFilter]
   );
 
-  // Server pagination: only fetch when page/filters actually change from initial state
+  // Server pagination: only fetch when page or filters change after mount
   const isInitialMount = React.useRef(true);
   useEffect(() => {
     if (isInitialMount.current) {
       isInitialMount.current = false;
       return;
     }
-    // Avoid re-fetching initial page when no filters are applied
-    if (
-      currentPage === 1 &&
-      debouncedSearch === '' &&
-      statusFilter === 'all' &&
-      clientFilter === 'all' &&
-      pageData === initialPage
-    ) {
-      return;
-    }
     fetchPage(currentPage);
-  }, [currentPage, debouncedSearch, statusFilter, clientFilter, fetchPage, initialPage, pageData]);
+  }, [currentPage, debouncedSearch, statusFilter, clientFilter, fetchPage]);
 
   const projects = pageData.items || [];
   const total = pageData.total || 0;

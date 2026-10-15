@@ -400,7 +400,7 @@ export function UserManagementTable({ initialUsers, initialAuditLogs = [], defau
     return birthdayUsers.slice((safeCurrentBirthdayPage - 1) * PAGE_SIZE, safeCurrentBirthdayPage * PAGE_SIZE);
   }, [birthdayUsers, safeCurrentBirthdayPage]);
 
-  const securityUsers = users || [];
+  const securityUsers = useMemo(() => users || [], [users]);
   const totalSecurityPages = Math.max(1, Math.ceil(securityUsers.length / PAGE_SIZE));
   const safeCurrentSecurityPage = Math.min(currentSecurityPage, totalSecurityPages);
   const paginatedSecurityUsers = useMemo(() => {

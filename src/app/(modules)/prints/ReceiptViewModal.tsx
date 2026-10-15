@@ -1,5 +1,7 @@
 "use client";
 
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { format } from "date-fns";
 import { Printer, Download, CheckCircle, FileText, Ban, Link2, Mail, X } from "lucide-react";
 import { DocumentHeader } from "@/components/shared/DocumentHeader";
@@ -14,7 +16,24 @@ const formatCurrency = (amount: number) => {
 };
 
 export default function ReceiptViewModal({ isOpen, onClose, job }: { isOpen: boolean, onClose: () => void, job: any }) {
-  if (!isOpen || !job) return null;
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [isOpen]);
+
+  if (!isOpen || !job || !mounted) return null;
 
   const handlePrint = () => {
     window.print();
@@ -31,13 +50,13 @@ export default function ReceiptViewModal({ isOpen, onClose, job }: { isOpen: boo
     } catch (err) {}
   };
   
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm print:bg-white print:p-0">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-md print:bg-white print:p-0">
       <div className="w-full max-w-[850px] flex flex-col gap-6 max-h-[90vh] overflow-y-auto print:max-h-none print:overflow-visible custom-scrollbar">
         {/* Top Control Bar */}
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between bg-slate-900/95 dark:bg-slate-950/90 backdrop-blur-md px-5 py-4 rounded-xl border border-white/10 shadow-xl text-white print:hidden gap-4 md:gap-0 sticky top-0 z-10">
           <div className="flex items-center gap-3">
-             <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white shrink-0">
+             <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center text-white shrink-0 shadow-sm shadow-purple-500/20">
                 <FileText className="w-4 h-4" />
              </div>
              <div>
@@ -152,7 +171,7 @@ export default function ReceiptViewModal({ isOpen, onClose, job }: { isOpen: boo
                           <td className="py-4">
                              <p className="text-xs font-semibold text-slate-900 uppercase tracking-tight">{job.file_name || 'Walk-in Print Document'}</p>
                              <p className="text-[11px] text-slate-500 mt-1 leading-relaxed max-w-lg">
-                                Specifications: {job.copies}x {job.paper_size} {job.print_type.toUpperCase()}
+                                {job.doc_type ? 'Type: ' + job.doc_type + ' • ' : ''}Specifications: {job.copies}x {job.paper_size} {job.print_type?.toUpperCase()}
                              </p>
                            </td>
                            <td className="py-4 text-right text-xs font-semibold text-slate-900 nums">{formatCurrency(job.amount)}</td>
@@ -232,6 +251,7 @@ export default function ReceiptViewModal({ isOpen, onClose, job }: { isOpen: boo
           }
         }
       `}} />
-    </div>
+    </div>,
+    document.body
   );
 }

@@ -13,6 +13,7 @@ export type CreatePrintJobPayload = {
   client_name: string;
   client_phone?: string;
   project_id?: string;
+  doc_type?: string;
   file_id?: string;
   file_name?: string;
   file_url?: string;
@@ -185,6 +186,7 @@ export async function createPrintJobAction(payload: CreatePrintJobPayload): Prom
       client_name: payload.client_name,
       client_phone: payload.client_phone || null,
       project_id: payload.project_id || null,
+      doc_type: payload.doc_type || null,
       file_id: payload.file_id || null,
       file_name: payload.file_name || null,
       file_url: payload.file_url || null,
@@ -228,19 +230,16 @@ export async function createPrintJobAction(payload: CreatePrintJobPayload): Prom
       amount: payload.amount
     });
 
-    const finalData = {
-      id: String(returnData.id),
-      client_name: String(returnData.client_name),
-      amount: Number(returnData.amount),
-      status: String(returnData.status),
-      payment_id: returnData.payment_id ? String(returnData.payment_id) : null,
-      receipt_number: returnData.receipt_number ? String(returnData.receipt_number) : null
-    };
+    const { data: fullJob } = await supabase
+      .from('print_jobs')
+      .select('*')
+      .eq('id', jobId)
+      .single();
 
     revalidatePath("/prints");
     revalidatePath("/accounts/prints");
     
-    return { success: true, error: null, data: finalData };
+    return { success: true, error: null, data: fullJob || { ...newJob, ...returnData } };
   } catch (err: any) {
     const msg = err instanceof Error ? err.message : String(err);
     return { success: false, error: msg || "Failed to create print job", data: null };
@@ -402,3 +401,128 @@ export async function cancelPrintJobAction(jobId: string): Promise<ActionRespons
     return { success: false, error: err.message };
   }
 }
+
+// ─── Document Types & Base Pricing ──────────────────────────────────────────
+
+export type PrintDocumentType = {
+  id: string;
+  name: string;
+  description?: string | null;
+  base_price: number;
+  suggested_paper?: string;
+  suggested_print_type?: string;
+  created_at?: string;
+  updated_at?: string;
+};
+
+export async function listPrintDocumentTypesAction(): Promise<ActionResponse<PrintDocumentType[]>> {
+  try {
+    const supabase: any = await createClient();
+    const { data, error } = await supabase
+      .from('print_document_types')
+      .select('*')
+      .order('base_price', { ascending: true });
+
+    if (error) throw new Error(error.message);
+    return { success: true, error: null, data: data || [] };
+  } catch (err: any) {
+    return { success: false, error: err.message, data: [] };
+  }
+}
+
+export async function createPrintDocumentTypeAction(payload: {
+  name: string;
+  description?: string;
+  base_price: number;
+  suggested_paper?: string;
+  suggested_print_type?: string;
+}): Promise<ActionResponse<PrintDocumentType>> {
+  try {
+    const auth = await requireOpsAuth();
+    if (!auth.authorized || !auth.profile) return { success: false, error: auth.error };
+
+    const supabase: any = await createClient();
+    const id = `DOC-${Date.now()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+
+    const { data, error } = await supabase
+      .from('print_document_types')
+      .insert({
+        id,
+        name: payload.name.trim(),
+        description: payload.description?.trim() || null,
+        base_price: Number(payload.base_price) || 0,
+        suggested_paper: payload.suggested_paper || 'A4',
+        suggested_print_type: payload.suggested_print_type || 'bw',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+
+    if (error) throw new Error(error.message);
+
+    revalidatePath("/prints");
+    return { success: true, error: null, data };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function updatePrintDocumentTypeAction(
+  id: string,
+  payload: {
+    name?: string;
+    description?: string;
+    base_price?: number;
+    suggested_paper?: string;
+    suggested_print_type?: string;
+  }
+): Promise<ActionResponse<PrintDocumentType>> {
+  try {
+    const auth = await requireOpsAuth();
+    if (!auth.authorized || !auth.profile) return { success: false, error: auth.error };
+
+    const supabase: any = await createClient();
+    const updates: any = { updated_at: new Date().toISOString() };
+    if (payload.name !== undefined) updates.name = payload.name.trim();
+    if (payload.description !== undefined) updates.description = payload.description?.trim() || null;
+    if (payload.base_price !== undefined) updates.base_price = Number(payload.base_price);
+    if (payload.suggested_paper !== undefined) updates.suggested_paper = payload.suggested_paper;
+    if (payload.suggested_print_type !== undefined) updates.suggested_print_type = payload.suggested_print_type;
+
+    const { data, error } = await supabase
+      .from('print_document_types')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw new Error(error.message);
+
+    revalidatePath("/prints");
+    return { success: true, error: null, data };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+
+export async function deletePrintDocumentTypeAction(id: string): Promise<ActionResponse<null>> {
+  try {
+    const auth = await requireOpsAuth();
+    if (!auth.authorized || !auth.profile) return { success: false, error: auth.error };
+
+    const supabase: any = await createClient();
+    const { error } = await supabase
+      .from('print_document_types')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw new Error(error.message);
+
+    revalidatePath("/prints");
+    return { success: true, error: null };
+  } catch (err: any) {
+    return { success: false, error: err.message };
+  }
+}
+

@@ -42,6 +42,10 @@ export async function createProjectAction(payload: CreateProjectInput): Promise<
       return { success: false, error: 'Unauthorized. Please log in.' };
     }
 
+    if (!(await checkActionRateLimit(profile.id, 'createProjectAction', 15, 60 * 1000))) {
+      return { success: false, error: 'Rate limit exceeded for this action. Please try again later.' };
+    }
+
     if (profile.role !== 'admin' && profile.role !== 'sales' && profile.role !== 'accountant') {
       return { success: false, error: 'Only Sales, Admin, or Accountant can create projects.' };
     }
@@ -223,7 +227,7 @@ export async function updateProjectAction(
     const profile: any = await getUserProfileAction();
     if (!profile) return { success: false, error: 'Unauthorized' };
     
-    if (!(await checkActionRateLimit(profile.id, 'createProjectAction', 15, 60 * 1000))) {
+    if (!(await checkActionRateLimit(profile.id, 'updateProjectAction', 30, 60 * 1000))) {
       return { success: false, error: 'Rate limit exceeded for this action. Please try again later.' };
     }
 

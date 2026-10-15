@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Users, UserPlus, X, Trash2 } from "lucide-react";
 import { assignUserToProjectAction, removeUserFromProjectAction } from "@/actions/assignment.actions";
 import { Select, SelectItem } from "@/components/ui/select";
@@ -21,6 +22,7 @@ interface ProjectTeamSectionProps {
   assignments: any[];
   staff: StaffMember[];
   canAssign: boolean;
+  onUpdateTeamMembers?: (assignments: any[]) => void;
 }
 
 const ASSIGNMENT_ROLES = [
@@ -57,7 +59,8 @@ function getInitials(firstName?: string | null, lastName?: string | null) {
   return `${f[0] || ''}${l[0] || ''}`.toUpperCase();
 }
 
-export function ProjectTeamSection({ projectId, assignments, staff, canAssign }: ProjectTeamSectionProps) {
+export function ProjectTeamSection({ projectId, assignments, staff, canAssign, onUpdateTeamMembers }: ProjectTeamSectionProps) {
+  const router = useRouter();
   const [isAssigning, setIsAssigning] = useState(false);
   const [selectedRole, setSelectedRole] = useState(ASSIGNMENT_ROLES[0].id);
   const [selectedUser, setSelectedUser] = useState("");
@@ -74,6 +77,11 @@ export function ProjectTeamSection({ projectId, assignments, staff, canAssign }:
       if (result?.success) {
         toast.success("Team member assigned");
         setSelectedUser("");
+        setIsAssigning(false);
+        if (result.data) {
+          onUpdateTeamMembers?.([...assignments, result.data]);
+        }
+        router.refresh();
       } else {
         toast.error(result?.error || "Assignment failed");
       }
@@ -91,6 +99,8 @@ export function ProjectTeamSection({ projectId, assignments, staff, canAssign }:
       const result = await removeUserFromProjectAction(userId, projectId);
       if (result?.success !== false) {
         toast.success("Team member removed");
+        onUpdateTeamMembers?.(assignments.filter((a: any) => (a.userId || a.id || a.user_id) !== userId));
+        router.refresh();
       } else {
         toast.error(result?.error || "Failed to remove member");
       }

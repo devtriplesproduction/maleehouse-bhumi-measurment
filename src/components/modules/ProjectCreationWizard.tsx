@@ -749,7 +749,7 @@ export function ProjectCreationWizard() {
                                       value={field.value || 'no_gst'}
                                       onValueChange={(val) => {
                                         field.onChange(val);
-                                        const rate = val === 'cgst_sgst_2_5' ? 5 : val === 'cgst_sgst_5' ? 10 : 0;
+                                        const rate = (val === 'cgst_sgst_2_5' || val === 'igst_5') ? 5 : val === 'cgst_sgst_5' ? 10 : 0;
                                         setValue('gst_rate', rate, { shouldValidate: true });
                                       }}
                                       placeholder="Select GST Type..."
@@ -757,7 +757,7 @@ export function ProjectCreationWizard() {
                                     >
                                       <SelectItem value="no_gst">No CGST / SGST (0% - Exempt)</SelectItem>
                                       <SelectItem value="cgst_sgst_2_5">2.5% CGST + 2.5% SGST (5% Total)</SelectItem>
-                                      <SelectItem value="cgst_sgst_5">5% CGST + 5% SGST (10% Total)</SelectItem>
+                                      <SelectItem value="igst_5">5% IGST (5% Total)</SelectItem>
                                     </Select>
                                   )}
                                 />
@@ -784,6 +784,12 @@ export function ProjectCreationWizard() {
                                     </div>
                                   </>
                                 )}
+                                {watch('gst_type') === 'igst_5' && (
+                                  <div className="flex justify-between items-center text-indigo-600 dark:text-indigo-400">
+                                    <span>IGST (5.0%):</span>
+                                    <span className="font-semibold">₹{Math.round(Number(watch('amount') || 0) * 0.05).toLocaleString('en-IN')}</span>
+                                  </div>
+                                )}
                                 {watch('gst_type') === 'cgst_sgst_5' && (
                                   <>
                                     <div className="flex justify-between items-center text-indigo-600 dark:text-indigo-400">
@@ -807,7 +813,7 @@ export function ProjectCreationWizard() {
                                   <span className="text-emerald-600 dark:text-emerald-400">
                                     ₹{(
                                       Number(watch('amount') || 0) +
-                                      (watch('gst_type') === 'cgst_sgst_2_5'
+                                      (watch('gst_type') === 'cgst_sgst_2_5' || watch('gst_type') === 'igst_5'
                                         ? Math.round(Number(watch('amount') || 0) * 0.05)
                                         : watch('gst_type') === 'cgst_sgst_5'
                                           ? Math.round(Number(watch('amount') || 0) * 0.10)
@@ -869,9 +875,11 @@ export function ProjectCreationWizard() {
                                 <p className="text-sm font-semibold text-indigo-600 dark:text-indigo-400">
                                   {watch('gst_type') === 'cgst_sgst_2_5'
                                     ? '2.5% CGST + 2.5% SGST (5%)'
-                                    : watch('gst_type') === 'cgst_sgst_5'
-                                      ? '5% CGST + 5% SGST (10%)'
-                                      : 'No CGST / SGST (Exempt)'}
+                                    : watch('gst_type') === 'igst_5'
+                                      ? '5% IGST (5%)'
+                                      : watch('gst_type') === 'cgst_sgst_5'
+                                        ? '5% CGST + 5% SGST (10%)'
+                                        : 'No CGST / SGST (Exempt)'}
                                 </p>
                               </div>
 
@@ -880,7 +888,7 @@ export function ProjectCreationWizard() {
                                 <p className="text-base font-bold text-emerald-600 dark:text-emerald-400">
                                   ₹{(
                                     Number(watch('amount') || 0) +
-                                    (watch('gst_type') === 'cgst_sgst_2_5'
+                                    (watch('gst_type') === 'cgst_sgst_2_5' || watch('gst_type') === 'igst_5'
                                       ? Math.round(Number(watch('amount') || 0) * 0.05)
                                       : watch('gst_type') === 'cgst_sgst_5'
                                         ? Math.round(Number(watch('amount') || 0) * 0.10)

@@ -43,10 +43,12 @@ export default async function ReceiptPage({
   const rawDesc = String(row.description || row.title || '');
   const inferredGstType = rawDesc.includes('10% GST') || rawDesc.includes('5% CGST') 
     ? 'cgst_sgst_5' 
-    : (rawDesc.includes('5% GST') || rawDesc.includes('2.5% CGST') ? 'cgst_sgst_2_5' : 'no_gst');
+    : rawDesc.includes('5% IGST')
+      ? 'igst_5'
+      : (rawDesc.includes('5% GST') || rawDesc.includes('2.5% CGST') ? 'cgst_sgst_2_5' : 'no_gst');
 
   const gstType = commMeta?.gst_type || inferredGstType;
-  const gstRate = commMeta?.gst_rate ?? (gstType === 'cgst_sgst_5' ? 10 : gstType === 'cgst_sgst_2_5' ? 5 : 0);
+  const gstRate = commMeta?.gst_rate ?? (gstType === 'cgst_sgst_5' ? 10 : (gstType === 'cgst_sgst_2_5' || gstType === 'igst_5') ? 5 : 0);
 
   let receiptData
 

@@ -70,6 +70,8 @@ export async function createProjectAction(payload: CreateProjectInput): Promise<
     let gstRate = 0;
     if (gstType === 'cgst_sgst_2_5') {
       gstRate = 5; // 2.5% CGST + 2.5% SGST
+    } else if (gstType === 'igst_5') {
+      gstRate = 5; // 5% IGST
     } else if (gstType === 'cgst_sgst_5') {
       gstRate = 10; // 5% CGST + 5% SGST
     }
@@ -149,7 +151,13 @@ export async function createProjectAction(payload: CreateProjectInput): Promise<
       }
     } else if (totalContractAmount > 0) {
       const methodLabel = paymentMethod.replace('_', ' ').toUpperCase();
-      const gstLabel = gstType === 'no_gst' ? 'No GST' : gstType === 'cgst_sgst_2_5' ? '2.5% CGST + 2.5% SGST' : '5% CGST + 5% SGST';
+      const gstLabel = gstType === 'no_gst'
+        ? 'No GST'
+        : gstType === 'cgst_sgst_2_5'
+          ? '2.5% CGST + 2.5% SGST'
+          : gstType === 'igst_5'
+            ? '5% IGST'
+            : '5% CGST + 5% SGST';
       await supabase.from('project_milestones').insert([{
         id: `mil-${Date.now()}-${Math.random().toString(36).substring(2, 6)}-0`,
         project_id: projectId,
@@ -168,7 +176,13 @@ export async function createProjectAction(payload: CreateProjectInput): Promise<
     }
 
     const methodDisplay = paymentMethod.replace('_', ' ');
-    const gstDisplay = gstType === 'no_gst' ? 'No GST' : gstType === 'cgst_sgst_2_5' ? '2.5% CGST + 2.5% SGST' : '5% CGST + 5% SGST';
+    const gstDisplay = gstType === 'no_gst'
+      ? 'No GST'
+      : gstType === 'cgst_sgst_2_5'
+        ? '2.5% CGST + 2.5% SGST'
+        : gstType === 'igst_5'
+          ? '5% IGST'
+          : '5% CGST + 5% SGST';
     await supabase.from("workflow_history").insert({
       project_id: projectId,
       from_stage: null,

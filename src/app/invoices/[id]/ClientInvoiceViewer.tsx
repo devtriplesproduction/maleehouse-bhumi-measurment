@@ -56,8 +56,9 @@ export function ClientInvoiceViewer({ invoice, companySettings }: ClientInvoiceV
   if (projectAmountPaid === 0 && amountPaid > 0) {
     projectAmountPaid = amountPaid;
   }
-  const projectAmountRemaining = Math.max(0, projectBudget - projectAmountPaid);
-  const gstType: string = 'CGST_SGST';
+  const projectChecklist = (invoice.projects as any)?.requirement_checklist;
+  const projectGstType = projectChecklist?.gst_type || (invoice as any)?.gst_type;
+  const gstType: string = projectGstType === 'igst_5' || projectGstType === 'IGST' ? 'IGST' : 'CGST_SGST';
   const gstRate = Number(
     invoice.gst_rate ?? (
       Number(invoice.amount) > 0

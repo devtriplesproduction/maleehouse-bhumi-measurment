@@ -73,7 +73,9 @@ export function InvoicePreviewModal({ invoice, companySettings, onClose, onRefre
   const remainingAmount = Math.max(0, totalAmount - amountPaid);
 
   const projectBudget = Number(activeInvoice.projects?.budget) || 0;
-  const gstType: string = 'CGST_SGST';
+  const projectChecklist = (activeInvoice.projects as any)?.requirement_checklist;
+  const projectGstType = projectChecklist?.gst_type || (activeInvoice as any)?.gst_type;
+  const gstType: string = projectGstType === 'igst_5' || projectGstType === 'IGST' ? 'IGST' : 'CGST_SGST';
   const projectPayments = activeInvoice.projects?.payments || [];
   const projectVerifiedPayments = projectPayments.filter((p: any) => p.status === 'verified' || p.status === 'paid');
   let projectAmountPaid = projectVerifiedPayments.reduce((sum: number, p: any) => sum + Number(p.amount), 0);

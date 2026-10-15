@@ -325,21 +325,31 @@ async function validateStageTransition(
       }
 
       case "field_assigned": {
-        const { data: assignment } = await supabase.from("project_assignments").select("id").eq("project_id", projectId).limit(1);
+        const { data: assignment } = await supabase
+          .from("project_assignments")
+          .select("id")
+          .eq("project_id", projectId)
+          .in("role", ["field", "lidar_specialist"])
+          .limit(1);
         if (!assignment || assignment.length === 0) {
           return {
             success: false,
-            error: "Cannot transition to Field Assigned: No technical team is assigned to this project."
+            error: "Cannot transition to Field Assigned: A Field Crew member must be assigned to this project first."
           };
         }
         break;
       }
       case "field_work": {
-        const { data: assignment } = await supabase.from("project_assignments").select("id").eq("project_id", projectId).limit(1);
+        const { data: assignment } = await supabase
+          .from("project_assignments")
+          .select("id")
+          .eq("project_id", projectId)
+          .in("role", ["field", "lidar_specialist"])
+          .limit(1);
         if (!assignment || assignment.length === 0) {
           return {
             success: false,
-            error: "Cannot transition to Field Work: No technical team is assigned to this project."
+            error: "Cannot transition to Field Work: A Field Crew member must be assigned to this project first."
           };
         }
         break;

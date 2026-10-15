@@ -56,7 +56,7 @@ export const baseProjectSchema = z.object({
   amount: z.coerce.number().min(0, { message: 'Project amount must be 0 or greater.' }).default(0),
   bank_account_id: z.string().optional().nullable(),
   payment_method: z.string().optional().nullable(),
-  gst_type: z.enum(['no_gst', 'cgst_sgst_2_5', 'cgst_sgst_5']).default('no_gst'),
+  gst_type: z.enum(['no_gst', 'cgst_sgst_2_5', 'cgst_sgst_5', 'igst_5']).default('no_gst'),
   gst_rate: z.coerce.number().min(0).default(0),
   base_amount: z.coerce.number().min(0).optional(),
   gst_amount: z.coerce.number().min(0).optional(),

@@ -127,6 +127,10 @@ export function OperationsFileUploadPanel({
   const isProjectClosed = projectStatus === 'completed' || projectStatus === 'archived';
   const isMidstage = projectStatus && projectStatus !== 'project_created' && projectStatus !== 'data_collection';
 
+  const hasFieldTeam = (teamMembers || []).some(
+    (m: any) => m.role === 'field' || m.role === 'lidar_specialist' || m.profiles?.role === 'field' || m.profiles?.role === 'lidar_specialist'
+  );
+
   const clientDocs = files.filter((f: any) => f.category === 'requirements' || f.category === 'intake_document');
   const controlPointDocs = files.filter((f: any) => f.category === 'control_point_image');
   const surveyDocs = files.filter((f: any) => f.category === 'survey_data' || f.category === 'control_point_csv');
@@ -293,6 +297,15 @@ export function OperationsFileUploadPanel({
   };
 
   const handleSendToField = () => {
+    if (!hasFieldTeam) {
+      toast({
+        title: 'Field Team Required',
+        description: 'Please assign a Field Crew member in the Project Team section before proceeding.',
+        variant: 'error'
+      });
+      return;
+    }
+
     setLoadingAction('send_to_field');
     startTransition(async () => {
       // Auto-claim the project for the engineer if not already assigned
@@ -789,14 +802,22 @@ export function OperationsFileUploadPanel({
                 Notify Team of Supplemental Documents
               </button>
             ) : (
-              <button
-                onClick={handleSendToField}
-                disabled={isPending || files.length === 0}
-                className="w-full mt-4 flex items-center justify-center gap-2 px-5 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-sm disabled:opacity-50 transition-all shadow-sm"
-              >
-                {isPending && loadingAction === 'send_to_field' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                Proceed to Field Assignment
-              </button>
+              <div className="mt-4 space-y-2">
+                <button
+                  onClick={handleSendToField}
+                  disabled={isPending || files.length === 0 || !hasFieldTeam}
+                  className="w-full flex items-center justify-center gap-2 px-5 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-sm disabled:opacity-50 transition-all shadow-sm"
+                  title={!hasFieldTeam ? "Please assign a Field Crew member first" : undefined}
+                >
+                  {isPending && loadingAction === 'send_to_field' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                  Proceed to Field Assignment
+                </button>
+                {!hasFieldTeam && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400 font-medium text-center">
+                    Please assign a Field Crew member in the Project Team section first.
+                  </p>
+                )}
+              </div>
             )
           )}
         </div>

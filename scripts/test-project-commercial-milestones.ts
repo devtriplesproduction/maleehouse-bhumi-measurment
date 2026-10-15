@@ -102,8 +102,8 @@ if (bankRes.success) {
   assert(!bankRes.data.payment_method, 'payment_method is omitted/null by default');
 }
 
-// 7. GST Type Selection Validation: no_gst, cgst_sgst_2_5, cgst_sgst_5
-for (const gstOption of ['no_gst', 'cgst_sgst_2_5', 'cgst_sgst_5'] as const) {
+// 7. GST Type Selection Validation: no_gst, cgst_sgst_2_5, cgst_sgst_5, igst_5
+for (const gstOption of ['no_gst', 'cgst_sgst_2_5', 'cgst_sgst_5', 'igst_5'] as const) {
   const gstRes = createProjectSchema.safeParse({
     ...validPayload,
     gst_type: gstOption,

@@ -345,6 +345,7 @@ export default function ProjectOverviewTab({
           assignments={teamMembers || []}
           staff={allUsers || []}
           canAssign={(isAdmin || isEngineer) && !isProjectClosed}
+          onUpdateTeamMembers={onUpdateTeamMembers}
         />
 
       </div>

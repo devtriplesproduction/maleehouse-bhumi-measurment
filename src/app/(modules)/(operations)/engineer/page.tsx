@@ -9,11 +9,9 @@ import {
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { formatDistanceToNow } from "date-fns";
 import { ActivityFeedTab } from "@/components/modules/ActivityFeedTab";
 import { PaginatedProjectList } from "@/components/modules/PaginatedProjectList";
 import { EmptyState } from "@/components/ui/empty-state";
-import { MaterialApprovalWidget } from "@/components/modules/MaterialApprovalWidget";
 import { filterActivityLogsByRole } from "@/lib/utils";
 import { PageHeader } from "@/components/modules/PageHeader";
 import DashboardNotificationCenter from "@/components/modules/DashboardNotificationCenter";
@@ -33,8 +31,6 @@ export default async function EngineerDashboardPage() {
 
   const projects = workspaceData.assignedProjects || [];
   const eodReports = workspaceData.eodReports || [];
-
-  const allMaterialRequests: any[] = workspaceData.materialRequests || [];
 
   // Filter project IDs that have had a QC rejection event
   const qcRejectedProjectIds = new Set(
@@ -160,8 +156,6 @@ export default async function EngineerDashboardPage() {
 
   const allTimeline = [...parsedLogs, ...parsedFiles]
     .sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-
-  const recentActivities = allTimeline.slice(0, 10);
 
   // KPIs Row
   const kpis = [
@@ -403,113 +397,9 @@ export default async function EngineerDashboardPage() {
           </Tabs>
         </div>
 
-        {/* Right Column (30%) - Action widgets and Recent Activity */}
+        {/* Right Column (30%) - Notifications */}
         <div className="lg:col-span-3 space-y-6 animate-in fade-in duration-300">
           <DashboardNotificationCenter />
-
-          <MaterialApprovalWidget requests={allMaterialRequests} />
-
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 px-1">
-              <Activity className="w-4 h-4 text-indigo-500" />
-              <h2 className="text-sm font-semibold text-slate-900 dark:text-white tracking-tight">recent activity</h2>
-            </div>
-
-            <div className="glass-card p-5 rounded-[1.5rem] bg-white/40 dark:bg-slate-900/40 border-slate-200/50 dark:border-white/5 overflow-y-auto h-[500px] shadow-sm custom-scrollbar">
-              {recentActivities.length === 0 ? (
-                <div className="py-8 text-center text-xs text-slate-400 italic">
-                  no recent activity logs recorded.
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {recentActivities.map((item) => {
-                    const s = item.summary.toLowerCase();
-
-                    // ── classify ──────────────────────────────────────────
-                    let iconBg = 'bg-slate-100 dark:bg-white/5';
-                    let iconText = 'text-slate-400';
-                    let rowBg = 'bg-slate-50/60 dark:bg-white/[0.01] hover:bg-slate-100/60 dark:hover:bg-white/[0.03] border-slate-200 dark:border-white/5';
-                    let nameColor = 'text-slate-600 dark:text-slate-400';
-                    let Icon: React.ComponentType<{ className?: string }> = Clock;
-                    let isImportant = false;
-
-                    if (s.includes('qc returned') || s.includes('rejected') || s.includes('failed')) {
-                      iconBg = 'bg-rose-500/10'; iconText = 'text-rose-500';
-                      rowBg = 'bg-rose-500/[0.03] dark:bg-rose-500/[0.02] hover:bg-rose-500/[0.06] dark:hover:bg-rose-500/[0.04] border-rose-400/40';
-                      nameColor = 'text-rose-600 dark:text-rose-400';
-                      Icon = AlertCircle; isImportant = true;
-
-                    } else if (s.includes('invoice') || s.includes('payment')) {
-                      iconBg = 'bg-amber-500/10'; iconText = 'text-amber-500';
-                      rowBg = 'bg-amber-500/[0.03] dark:bg-amber-500/[0.02] hover:bg-amber-500/[0.06] dark:hover:bg-amber-500/[0.04] border-amber-400/40';
-                      nameColor = 'text-amber-600 dark:text-amber-400';
-                      Icon = FileText;
-                    } else if (s.includes('approved') || s.includes('deliverable') || s.includes('signed off')) {
-                      iconBg = 'bg-emerald-500/10'; iconText = 'text-emerald-500';
-                      rowBg = 'bg-emerald-500/[0.02] dark:bg-emerald-500/[0.01] hover:bg-emerald-500/[0.04] dark:hover:bg-emerald-500/[0.03] border-emerald-400/30';
-                      nameColor = 'text-emerald-600 dark:text-emerald-400';
-                      Icon = CheckCircle2;
-                    } else if (s.includes('survey') || s.includes('field visit') || s.includes('field_visit')) {
-                      iconBg = 'bg-sky-500/10'; iconText = 'text-sky-500';
-                      rowBg = 'bg-sky-500/[0.02] dark:bg-sky-500/[0.01] hover:bg-sky-500/[0.04] dark:hover:bg-sky-500/[0.03] border-sky-400/30';
-                      nameColor = 'text-sky-600 dark:text-sky-400';
-                      Icon = MapPin;
-                    } else if (s.includes('document') || s.includes('requirement') || s.includes('uploaded')) {
-                      iconBg = 'bg-violet-500/10'; iconText = 'text-violet-500';
-                      rowBg = 'bg-violet-500/[0.02] dark:bg-violet-500/[0.01] hover:bg-violet-500/[0.04] dark:hover:bg-violet-500/[0.03] border-violet-400/30';
-                      nameColor = 'text-violet-600 dark:text-violet-400';
-                      Icon = FileText;
-                    } else if (s.includes('assigned') || s.includes('engineer') || s.includes('team')) {
-                      iconBg = 'bg-indigo-500/10'; iconText = 'text-indigo-500';
-                      rowBg = 'bg-indigo-500/[0.02] dark:bg-indigo-500/[0.01] hover:bg-indigo-500/[0.04] dark:hover:bg-indigo-500/[0.03] border-indigo-400/30';
-                      nameColor = 'text-indigo-600 dark:text-indigo-400';
-                      Icon = Clock;
-                    }
-
-                    return (
-                      <div
-                        key={item.id}
-                        className={cn(
-                          'p-3 rounded-xl border transition-all duration-200 flex items-start gap-3',
-                          rowBg,
-                          isImportant && 'shadow-sm'
-                        )}
-                      >
-                        <div className={cn('w-7 h-7 rounded-lg flex items-center justify-center shrink-0', iconBg)}>
-                          <Icon className={cn('w-3.5 h-3.5', iconText)} />
-                        </div>
-
-                        <div className="flex-1 min-w-0 space-y-0.5">
-                          <div className="flex items-start justify-between gap-1">
-                            <Link
-                              href={`/projects/${item.projectId}`}
-                              className={cn('text-[10px] font-bold uppercase tracking-widest hover:underline leading-none truncate', nameColor)}
-                            >
-                              {item.projectName}
-                            </Link>
-                            <span className="text-[9px] font-medium text-slate-400 dark:text-slate-500 whitespace-nowrap shrink-0">
-                              {formatDistanceToNow(new Date(item.timestamp), { addSuffix: true })}
-                            </span>
-                          </div>
-
-                          <p className={cn(
-                            'text-xs leading-snug',
-                            isImportant ? 'font-semibold text-slate-800 dark:text-slate-200' : 'font-medium text-slate-700 dark:text-slate-300'
-                          )}>
-                            {item.summary}
-                          </p>
-
-                          <p className="text-[10px] font-medium text-slate-400 dark:text-slate-500">
-                            by {item.user}
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
         </div>
 
       </div>

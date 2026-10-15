@@ -746,7 +746,7 @@ export function ProjectMaterialsSection({ projectId, assignments, staff, canAssi
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4.5 max-h-[640px] overflow-y-auto pr-1 custom-scrollbar">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 pt-1 max-h-[640px] overflow-y-auto pr-1 custom-scrollbar">
             {displayedMaterials.map((mat) => {
               const isSubmitted = mat.status === 'submitted' || mat.status === 'returned';
               const isLost = mat.status === 'lost' || mat.status === 'missing';

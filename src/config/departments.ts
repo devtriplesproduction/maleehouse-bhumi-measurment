@@ -35,14 +35,6 @@ export const DEPARTMENTS: DepartmentConfig[] = [
       { id: "recon_eng", name: "Reconciliation Engineer", systemRole: "engineer" },
       { id: "field_surveyor", name: "Field Surveyor", systemRole: "field" },
     ]
-  },
-  {
-    id: "design",
-    name: "Design Department",
-    designations: [
-      { id: "design_eng", name: "Design Engineer", systemRole: "engineer" },
-      { id: "lidar_specialist", name: "Lidar Specialist", systemRole: "engineer" },
-    ]
   }
 ];
 

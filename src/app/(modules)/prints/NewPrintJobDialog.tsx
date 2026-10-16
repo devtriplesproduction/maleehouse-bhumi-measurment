@@ -231,12 +231,12 @@ export default function NewPrintJobDialog({
           onClick={e => e.stopPropagation()}
         >
         {/* Top Gradient Accent Line */}
-        <div className="h-1.5 w-full bg-gradient-to-r from-purple-600 via-indigo-600 to-violet-500 shrink-0" />
+        <div className="h-1.5 w-full bg-gradient-to-r from-emerald-600 to-emerald-500 shrink-0" />
 
         {/* Modal Header */}
         <div className="px-6 sm:px-8 py-5 border-b border-slate-100 dark:border-white/10 flex justify-between items-center bg-slate-50/70 dark:bg-slate-800/40 shrink-0">
           <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-purple-500/25 ring-4 ring-purple-50 dark:ring-purple-950/40">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-600 to-emerald-500 flex items-center justify-center text-white shadow-md shadow-emerald-500/25 ring-4 ring-emerald-50 dark:ring-emerald-950/40">
               <Printer className="w-6 h-6" />
             </div>
             <div>
@@ -638,7 +638,7 @@ export default function NewPrintJobDialog({
               type="button"
               onClick={handleSubmit}
               disabled={loading || !formData.client_name.trim()} 
-              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-gradient-to-r from-purple-600 via-indigo-600 to-violet-600 hover:from-purple-700 hover:to-indigo-700 active:scale-[0.98] text-white rounded-xl transition-all font-bold text-xs uppercase tracking-wider shadow-lg shadow-purple-500/25 disabled:opacity-50 disabled:cursor-not-allowed" 
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-2.5 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 active:scale-[0.98] text-white rounded-xl transition-all font-bold text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/25 disabled:opacity-50 disabled:cursor-not-allowed" 
             >
               {loading ? (
                 <>

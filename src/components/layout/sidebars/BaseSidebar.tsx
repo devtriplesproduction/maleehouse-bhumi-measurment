@@ -36,10 +36,10 @@ export function BaseSidebar({ links }: BaseSidebarProps) {
   }, [pathname, setMobileOpen]);
 
   const currentTheme = {
-    bg: "bg-purple-500/10",
-    text: "text-purple-600 dark:text-purple-400",
-    border: "border-purple-500/10",
-    logoBg: "bg-purple-600"
+    bg: "bg-emerald-500/10",
+    text: "text-emerald-600 dark:text-emerald-400",
+    border: "border-emerald-500/10",
+    logoBg: "bg-emerald-600"
   };
 
   return (

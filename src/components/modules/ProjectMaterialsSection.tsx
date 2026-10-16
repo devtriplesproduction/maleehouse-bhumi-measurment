@@ -12,7 +12,7 @@ import {
 } from "@/actions/field.actions";
 import { getEquipmentCatalogAction } from "@/actions/equipment.actions";
 import { EquipmentItem, DEFAULT_EQUIPMENT_CATALOG } from "@/types/equipment.types";
-import { SubmitMaterialsModal } from "@/components/modules/SubmitMaterialsModal";
+import { SubmitMaterialsModal, parseLostReason } from "@/components/modules/SubmitMaterialsModal";
 import { Select, SelectItem } from "@/components/ui/select";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -334,9 +334,9 @@ export function ProjectMaterialsSection({ projectId, assignments, staff, canAssi
       <div className="space-y-5">
         {/* ── Status KPI Stats Bar & Quick Submit All ── */}
         <div className="p-4 rounded-2xl bg-gradient-to-r from-slate-50 via-slate-50/80 to-indigo-50/30 dark:from-white/[0.03] dark:via-white/[0.02] dark:to-indigo-500/5 border border-slate-200/70 dark:border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-4 sm:gap-6 flex-wrap">
+          <div className="flex-1 w-full flex items-center justify-between gap-6 sm:gap-8 flex-wrap">
             {/* KPI 1: Total Units */}
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2.5 shrink-0">
               <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 border border-indigo-200/60 dark:border-indigo-500/20">
                 <Package className="w-4 h-4" />
               </div>
@@ -349,7 +349,7 @@ export function ProjectMaterialsSection({ projectId, assignments, staff, canAssi
             </div>
 
             {/* KPI 2: In Field */}
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2.5 shrink-0">
               <div className={cn(
                 "w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border",
                 pendingUnits > 0
@@ -373,7 +373,7 @@ export function ProjectMaterialsSection({ projectId, assignments, staff, canAssi
             </div>
 
             {/* KPI 3: Returned / Submitted */}
-            <div className="flex items-center gap-2.5">
+            <div className="flex items-center gap-2.5 shrink-0">
               <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
                 <CheckCircle2 className="w-4 h-4" />
               </div>
@@ -387,7 +387,7 @@ export function ProjectMaterialsSection({ projectId, assignments, staff, canAssi
 
             {/* KPI 4: Lost / Missing (if any) */}
             {lostUnits > 0 && (
-              <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-2.5 shrink-0">
                 <div className="w-8 h-8 rounded-xl bg-rose-500/10 border border-rose-500/25 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
                   <PackageX className="w-4 h-4" />
                 </div>
@@ -874,6 +874,31 @@ export function ProjectMaterialsSection({ projectId, assignments, staff, canAssi
                                 ))}
                               </div>
                             </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+
+                    {/* Lost Component Breakdown & Responsible Member */}
+                    {isLost && (() => {
+                      const parsedLost = parseLostReason(mat.lost_reason);
+                      return (
+                        <div className="p-3 rounded-xl bg-rose-50/80 dark:bg-rose-500/10 border border-rose-200/80 dark:border-rose-500/25 text-xs space-y-1.5 mt-2">
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                            <div className="flex items-center gap-1.5 font-bold text-rose-700 dark:text-rose-400 text-xs">
+                              <PackageX className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                              <span>{parsedLost.lostScopeText || "Reported Missing"}</span>
+                            </div>
+                            {mat.responsible_person_name && (
+                              <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-300 bg-white/80 dark:bg-slate-800 px-2 py-0.5 rounded-md border border-rose-200/60 dark:border-rose-500/20">
+                                Accountable: {mat.responsible_person_name}
+                              </span>
+                            )}
+                          </div>
+                          {parsedLost.reasonText && (
+                            <p className="text-[11px] text-slate-600 dark:text-slate-300 italic">
+                              &ldquo;{parsedLost.reasonText}&rdquo;
+                            </p>
                           )}
                         </div>
                       );

@@ -12,7 +12,7 @@ interface PremiumDatePickerProps {
   onChange?: (date: string) => void;
   className?: string;
   align?: 'left' | 'right';
-  side?: 'bottom' | 'right';
+  side?: 'bottom' | 'right' | 'left';
   disabled?: boolean;
   triggerClassName?: string;
   minDate?: string | Date;
@@ -37,13 +37,37 @@ export function PremiumDatePicker({ value, onChange, className, align = 'left', 
     if (containerRef.current) {
       const rect = containerRef.current.getBoundingClientRect();
       const popupWidth = 300;
+      const calendarHeight = 320;
 
-      if (side === 'right') {
-        // Position to the right, centered vertically on the trigger
-        const calendarHeight = 320; // approximate height of calendar popup
-        const triggerCenterY = rect.top + rect.height / 2 + window.scrollY;
+      if (side === 'left') {
+        // Position to the left of the trigger, top-aligned near trigger
+        let top = rect.top + window.scrollY - 4;
+        let left = rect.left - popupWidth + window.scrollX - 8;
+
+        const minTop = window.scrollY + 16;
+        const maxTop = window.scrollY + window.innerHeight - calendarHeight - 16;
+        if (top < minTop) top = minTop;
+        if (top > maxTop) top = Math.max(minTop, maxTop);
+
+        const minLeft = window.scrollX + 8;
+        if (left < minLeft) left = minLeft;
+
         setCoords({
-          top: triggerCenterY - calendarHeight / 2,
+          top: top,
+          left: left,
+        });
+      } else if (side === 'right') {
+        // Position to the right, centered vertically on the trigger
+        const triggerCenterY = rect.top + rect.height / 2 + window.scrollY;
+        let top = triggerCenterY - calendarHeight / 2;
+
+        const minTop = window.scrollY + 16;
+        const maxTop = window.scrollY + window.innerHeight - calendarHeight - 16;
+        if (top < minTop) top = minTop;
+        if (top > maxTop) top = Math.max(minTop, maxTop);
+
+        setCoords({
+          top: top,
           left: rect.right + window.scrollX + 8,
         });
       } else {
@@ -51,7 +75,16 @@ export function PremiumDatePicker({ value, onChange, className, align = 'left', 
         let left = rect.left + window.scrollX;
         if (align === 'right') {
           left = rect.right - popupWidth + window.scrollX;
+        } else if (rect.left + popupWidth > window.innerWidth - 16 && rect.right - popupWidth >= 16) {
+          left = rect.right - popupWidth + window.scrollX;
         }
+
+        // Clamp to viewport edges to prevent any horizontal overflow
+        const minLeft = window.scrollX + 8;
+        const maxLeft = window.scrollX + window.innerWidth - popupWidth - 8;
+        if (left < minLeft) left = minLeft;
+        if (left > maxLeft) left = Math.max(minLeft, maxLeft);
+
         setCoords({
           top: rect.bottom + window.scrollY + 8,
           left: left
@@ -90,9 +123,11 @@ export function PremiumDatePicker({ value, onChange, className, align = 'left', 
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Update coordinates on scroll or resize
+  // Update coordinates on scroll or resize, and immediately on open
   React.useEffect(() => {
     if (!isOpen) return;
+
+    updateCoords();
 
     const handleScrollOrResize = () => {
       updateCoords();
@@ -145,6 +180,7 @@ export function PremiumDatePicker({ value, onChange, className, align = 'left', 
             top: coords.top,
             left: coords.left,
             width: '300px',
+            transformOrigin: (side === 'left' || align === 'right') ? 'top right' : 'top left',
           }}
           className="z-[99999] glass-card p-4 border-slate-200/60 dark:border-white/10 shadow-[0_8px_30px_rgb(0,0,0,0.12)] bg-white/80 dark:bg-slate-900/80 backdrop-blur-3xl rounded-2xl"
         >

@@ -21,7 +21,7 @@ interface ProjectWorkflowTabProps {
   history?: any[];
 }
 
-interface StageConfig {
+export interface StageConfig {
   id: number;
   label: string;
   description: string;
@@ -31,7 +31,7 @@ interface StageConfig {
   nextStatusKey: string;
 }
 
-const WORKFLOW_STAGES: StageConfig[] = [
+export const WORKFLOW_STAGES: StageConfig[] = [
   {
     id: 1,
     label: 'Project Created',

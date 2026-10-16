@@ -698,7 +698,7 @@ export function MilestonePaymentsTable({ milestones, onRefresh, searchQuery }: M
                     <PremiumDatePicker
                       value={rescheduleDate}
                       onChange={(dateStr) => setRescheduleDate(dateStr)}
-                      side="right"
+                      side="bottom"
                     />
                   </div>
 

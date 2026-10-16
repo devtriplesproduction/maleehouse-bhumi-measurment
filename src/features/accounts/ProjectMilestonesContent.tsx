@@ -30,6 +30,7 @@ import DashboardLoading from "@/app/(modules)/loading";
 import { motion, AnimatePresence } from "framer-motion";
 import { PremiumDatePicker } from "@/components/ui/PremiumDatePicker";
 import { Select, SelectItem } from "@/components/ui/select";
+import { WORKFLOW_STAGES } from "@/components/modules/ProjectWorkflowTab";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -742,7 +743,7 @@ export function ProjectMilestonesContent({ initialProjects }: { initialProjects:
                                         <PremiumDatePicker
                                           value={m.due_date?.split('T')[0] || ""}
                                           onChange={(date) => updateMilestone(idx, 'due_date', date)}
-                                          side="right"
+                                          side="left"
                                           triggerClassName="h-9 rounded-lg bg-slate-50 dark:bg-white/5 text-xs"
                                           minDate={idx > 0 && milestones[idx - 1].due_date ? milestones[idx - 1].due_date : undefined}
                                         />
@@ -769,13 +770,12 @@ export function ProjectMilestonesContent({ initialProjects }: { initialProjects:
                                         ))}
 
                                         <div className="px-3 py-1.5 mt-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-t border-slate-100 dark:border-white/5 pt-2">Workflow Stages</div>
-                                        <SelectItem value="project_created" className="text-xs py-2">Project Created</SelectItem>
-                                        <SelectItem value="data_collection" className="text-xs py-2">Data Collection</SelectItem>
-                                        <SelectItem value="field_work" className="text-xs py-2">Field Work</SelectItem>
-                                        <SelectItem value="data_sync" className="text-xs py-2">Data Sync</SelectItem>
-                                        <SelectItem value="final_review" className="text-xs py-2">Final Review</SelectItem>
-                                        <SelectItem value="completed" className="text-xs py-2">Completed</SelectItem>
-                                        {m.linked_stage && !["project_created", "data_collection", "field_work", "data_sync", "final_review", "completed"].includes(m.linked_stage) && !m.linked_stage.startsWith("visit:") && (
+                                        {WORKFLOW_STAGES.map((stg) => (
+                                          <SelectItem key={stg.statusKey} value={stg.statusKey} className="text-xs py-2">
+                                            {stg.id}. {stg.label} ({stg.responsibleLabel})
+                                          </SelectItem>
+                                        ))}
+                                        {m.linked_stage && !WORKFLOW_STAGES.some((s) => s.statusKey === m.linked_stage) && !m.linked_stage.startsWith("visit:") && (
                                           <SelectItem value={m.linked_stage} className="text-xs py-2 text-amber-500">
                                             {m.linked_stage} (Legacy)
                                           </SelectItem>

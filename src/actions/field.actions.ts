@@ -412,7 +412,8 @@ export async function markMaterialLostAction(
   responsiblePersonId?: string,
   responsiblePersonName?: string,
   reason?: string,
-  shouldRevalidate: boolean = true
+  shouldRevalidate: boolean = true,
+  lostItemsSummary?: string
 ) {
   const profile = await getUserProfileAction();
   if (!profile) return { success: false, error: "Unauthorized" };
@@ -455,6 +456,7 @@ export async function markMaterialLostAction(
       material_id: materialId,
       responsible_person: finalResponsibleName,
       responsible_person_id: responsiblePersonId,
+      lost_items: lostItemsSummary || null,
       reason
     },
     created_at: now,
@@ -465,11 +467,12 @@ export async function markMaterialLostAction(
     if (admins && admins.length > 0) {
       const projectName = material.projects?.name || material.project_id;
       const { insertNotificationsBatch } = await import("./notification.actions");
+      const itemDesc = lostItemsSummary ? `"${material.item_name}" (${lostItemsSummary})` : `"${material.item_name}"`;
       await insertNotificationsBatch(
         admins.map((admin: any) => ({
           userId: admin.id,
           title: "⚠️ Equipment Reported Lost/Missing",
-          message: `${material.quantity}x "${material.item_name}" for project "${projectName}" was reported lost. Responsible person: ${finalResponsibleName}.`,
+          message: `${material.quantity}x ${itemDesc} for project "${projectName}" was reported lost. Responsible person: ${finalResponsibleName}.`,
           type: "assignment" as const,
           relatedProjectId: material.project_id
         }))
@@ -493,6 +496,7 @@ export interface MissingMaterialInput {
   responsiblePersonId?: string;
   responsiblePersonName?: string;
   reason?: string;
+  lostItemsSummary?: string;
 }
 
 /**
@@ -522,7 +526,8 @@ export async function submitAllProjectMaterialsAction(
           item.responsiblePersonId,
           item.responsiblePersonName,
           item.reason,
-          false
+          false,
+          item.lostItemsSummary
         )
       )
     );

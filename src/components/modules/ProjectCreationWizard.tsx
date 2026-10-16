@@ -30,9 +30,14 @@ import {
   Target,
   Trash2,
   Sparkles,
+  Receipt,
+  Coins,
+  Calculator,
+  X,
+  Check,
 } from 'lucide-react';
 import { PremiumDatePicker } from '@/components/ui/PremiumDatePicker';
-import { cn } from '@/lib/utils';
+import { cn, numberToWords } from '@/lib/utils';
 import { createProjectSchema, type CreateProjectInput } from '@/validations/project.schema';
 import { createProjectAction } from '@/actions/project.actions';
 import { toast } from 'sonner';
@@ -90,6 +95,26 @@ const STATE_OPTIONS = [
   { value: 'PY', label: 'Puducherry' },
 ];
 
+import { WORKFLOW_STAGES } from '@/components/modules/ProjectWorkflowTab';
+
+export const WORKFLOW_STAGE_OPTIONS = [
+  { 
+    value: 'none', 
+    label: '-- No linked stage --',
+    step: '—', 
+    title: '-- No linked stage --', 
+    desc: 'Unrestricted (does not block progress)', 
+    role: null 
+  },
+  ...WORKFLOW_STAGES.map((stg) => ({
+    value: stg.statusKey,
+    label: `${stg.id}. ${stg.label}`,
+    step: String(stg.id).padStart(2, '0'),
+    title: stg.label,
+    desc: stg.description,
+    role: stg.responsibleLabel,
+  })),
+];
 
 const SERVICES_BY_CATEGORY: Record<string, string[]> = {
   "Plot measurement": [
@@ -141,6 +166,41 @@ const SERVICES_BY_CATEGORY: Record<string, string[]> = {
     "LIDAR Survey"
   ]
 };
+
+const GST_RATE_OPTIONS = [
+  {
+    type: 'no_gst' as const,
+    rate: 0,
+    rateBadge: '0% GST',
+    label: 'Exempt / Nil-Rated',
+    description: 'No CGST or SGST applied',
+    tag: 'Non-Taxable',
+  },
+  {
+    type: 'cgst_sgst_2_5' as const,
+    rate: 5,
+    rateBadge: '5% Total',
+    label: 'CGST + SGST (5%)',
+    description: '2.5% CGST + 2.5% SGST',
+    tag: 'Intra-State',
+  },
+  {
+    type: 'igst_5' as const,
+    rate: 5,
+    rateBadge: '5% Total',
+    label: 'IGST (5%)',
+    description: '5.0% Integrated GST',
+    tag: 'Inter-State',
+  },
+  {
+    type: 'cgst_sgst_5' as const,
+    rate: 10,
+    rateBadge: '10% Total',
+    label: 'CGST + SGST (10%)',
+    description: '5.0% CGST + 5.0% SGST',
+    tag: 'Special Slab',
+  },
+];
 
 export function ProjectCreationWizard() {
   const { role } = useUser();
@@ -211,6 +271,42 @@ export function ProjectCreationWizard() {
   const milestonePct = totalContractValue > 0 ? (milestoneSum / totalContractValue) * 100 : 0;
   const milestoneDiff = totalContractValue - milestoneSum;
   const isMilestonesBalanced = Math.abs(milestoneDiff) <= 1;
+
+  // Auto-sync milestones to totalContractValue whenever contract value changes or when step changes
+  useEffect(() => {
+    if (totalContractValue <= 0) return;
+    const current = watch('milestones') || [];
+    if (current.length === 0) return;
+
+    // Single milestone: if 100% or default advance milestone, keep amount synced with total contract value
+    if (current.length === 1 && (!current[0].percentage || current[0].percentage === '100')) {
+      if (Number(current[0].amount) !== totalContractValue || current[0].percentage !== '100') {
+        setValue('milestones', [{
+          ...current[0],
+          percentage: '100',
+          amount: totalContractValue,
+        }], { shouldValidate: true });
+      }
+      return;
+    }
+
+    // Multiple milestones: if percentages sum to 100%, rebalance amounts proportionally to new total
+    const totalPct = current.reduce((sum: number, m: any) => sum + (parseFloat(m.percentage) || 0), 0);
+    const sumAmt = current.reduce((sum: number, m: any) => sum + (Number(m.amount) || 0), 0);
+    if (Math.abs(totalPct - 100) <= 0.5 && Math.abs(sumAmt - totalContractValue) > 1) {
+      let runningSum = 0;
+      const updated = current.map((m: any, idx: number) => {
+        const isLast = idx === current.length - 1;
+        const pct = parseFloat(m.percentage) || 0;
+        const amt = isLast
+          ? Math.max(0, totalContractValue - runningSum)
+          : Math.round(totalContractValue * (pct / 100));
+        runningSum += amt;
+        return { ...m, amount: amt };
+      });
+      setValue('milestones', updated, { shouldValidate: true });
+    }
+  }, [totalContractValue, step, setValue, watch]);
 
   const addMilestoneRow = () => {
     const current = watch('milestones') || [];
@@ -346,7 +442,16 @@ export function ProjectCreationWizard() {
     } else if (step === 3) {
       fieldsToValidate = ['amount', 'gst_type'];
     } else if (step === 4) {
-      const ms = watch('milestones') || [];
+      let ms = watch('milestones') || [];
+      // Safety auto-balance single 100% milestone before validating
+      if (ms.length === 1 && (!ms[0].percentage || ms[0].percentage === '100') && totalContractValue > 0 && Math.abs(Number(ms[0].amount) - totalContractValue) > 1) {
+        ms = [{
+          ...ms[0],
+          percentage: '100',
+          amount: totalContractValue,
+        }];
+        setValue('milestones', ms, { shouldValidate: true });
+      }
       if (ms.length > 0) {
         for (let i = 0; i < ms.length; i++) {
           if (!ms[i].title?.trim()) {
@@ -442,11 +547,11 @@ export function ProjectCreationWizard() {
         </button>
       </DialogTrigger>
 
-      <DialogContent className="max-w-5xl h-[85vh] !p-0 !overflow-hidden !border-none !bg-transparent !shadow-none sm:!rounded-none [&>button]:hidden">
+      <DialogContent className="w-[96vw] max-w-7xl h-[92vh] max-h-[980px] !p-0 !overflow-hidden !border-none !bg-transparent !shadow-none sm:!rounded-none [&>button]:hidden">
         <div className="w-full h-full flex bg-white/95 dark:bg-[#0c101f]/95 backdrop-blur-2xl rounded-2xl border border-slate-200/80 dark:border-white/10 overflow-hidden relative shadow-2xl font-sans">
 
           {/* ── Left Sidebar Flow ── */}
-          <div className="w-96 bg-slate-50/50 dark:bg-[#080b14]/50 border-r border-slate-200/80 dark:border-white/5 flex flex-col justify-between p-10 shrink-0 relative overflow-hidden">
+          <div className="w-80 lg:w-96 bg-slate-50/50 dark:bg-[#080b14]/50 border-r border-slate-200/80 dark:border-white/5 flex flex-col justify-between p-8 lg:p-10 shrink-0 relative overflow-hidden">
             {/* Ambient Background Glow */}
             <div className={cn("absolute -top-24 -left-24 w-48 h-48 blur-[60px] rounded-full pointer-events-none", c.glow)} />
             <div className={cn("absolute -bottom-24 -right-24 w-48 h-48 blur-[60px] rounded-full pointer-events-none", c.glow)} />
@@ -507,7 +612,7 @@ export function ProjectCreationWizard() {
                       e.preventDefault();
                     }
                   }}
-                  className="max-w-2xl mx-auto space-y-8"
+                  className="w-full max-w-4xl mx-auto space-y-8"
                 >
                   <AnimatePresence mode="wait">
                     <motion.div
@@ -764,7 +869,7 @@ export function ProjectCreationWizard() {
                       {step === 2 && (
                         <div className="space-y-6">
                           {/* Two Column Layout: Categories Left, Sub-categories Right */}
-                          <div className="flex gap-6 h-[400px] items-stretch">
+                          <div className="flex gap-6 min-h-[460px] h-[52vh] max-h-[600px] items-stretch">
                             {/* Categories List (Left) */}
                             <div className="w-56 overflow-y-auto space-y-1.5 pr-2 border-r border-slate-200 dark:border-white/5 custom-scrollbar shrink-0">
                               {Object.keys(SERVICES_BY_CATEGORY).map((cat) => {
@@ -857,130 +962,360 @@ export function ProjectCreationWizard() {
                         <div className="space-y-6">
 
                           {/* Commercial Amount & Payment Setup Card */}
-                          <div className="glass-card bg-slate-50/50 dark:bg-white/[0.02] border border-slate-200/60 dark:border-white/10 rounded-2xl p-6 space-y-5">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2.5">
-                                <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-semibold text-sm">
-                                  <IndianRupee className="w-4 h-4" />
+                          <div className="relative overflow-hidden rounded-3xl border border-slate-200/80 dark:border-white/10 bg-white/90 dark:bg-slate-900/50 backdrop-blur-xl p-6 sm:p-7 shadow-sm space-y-6">
+                            
+                            {/* Ambient background glow decoration */}
+                            <div className="pointer-events-none absolute -top-24 -right-24 w-60 h-60 bg-gradient-to-br from-indigo-500/10 to-purple-500/10 rounded-full blur-3xl" />
+                            <div className="pointer-events-none absolute -bottom-24 -left-24 w-60 h-60 bg-gradient-to-tr from-emerald-500/10 to-teal-500/10 rounded-full blur-3xl" />
+
+                            {/* Header: Title with styled icon and active summary badge */}
+                            <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-5 border-b border-slate-200/60 dark:border-white/5">
+                              <div className="flex items-center gap-3.5">
+                                <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-indigo-500 via-indigo-600 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/25 ring-4 ring-indigo-500/10 shrink-0">
+                                  <IndianRupee className="w-5 h-5 stroke-[2.2]" />
                                 </div>
                                 <div>
-                                  <h4 className="text-sm font-semibold text-slate-800 dark:text-white">Commercial & Tax Details</h4>
-                                  <p className="text-[11px] text-slate-400">Configure base project value and applicable GST slab</p>
+                                  <div className="flex items-center gap-2">
+                                    <h4 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">
+                                      Commercial & Tax Details
+                                    </h4>
+                                    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200/50 dark:border-indigo-800/40">
+                                      Step 3 of 5
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                                    Configure base project value and applicable GST tax slab
+                                  </p>
                                 </div>
                               </div>
+
+                              {totalContractValue > 0 && (
+                                <div className="flex items-center gap-2 self-start sm:self-auto px-3.5 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200/70 dark:border-emerald-800/50 text-emerald-700 dark:text-emerald-300 shadow-2xs">
+                                  <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                  <span className="text-[11px] font-semibold text-emerald-800 dark:text-emerald-400">Total Contract:</span>
+                                  <span className="text-sm font-bold nums">₹{totalContractValue.toLocaleString('en-IN')}</span>
+                                </div>
+                              )}
                             </div>
 
-                            {/* Row 1: Commercial Amount & GST Type Grid */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              {/* Commercial Amount Input */}
-                              <div className="space-y-2">
-                                <label htmlFor="input-amount" className="text-xs font-medium uppercase tracking-widest text-slate-400 dark:text-slate-500 block px-1">
-                                  Base Commercial Amount (₹)
+                            {/* Section 1: Base Commercial Amount */}
+                            <div className="relative z-10 space-y-2.5">
+                              <div className="flex items-center justify-between px-1">
+                                <label htmlFor="input-amount" className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                                  <Coins className="w-3.5 h-3.5 text-indigo-500" />
+                                  <span>Base Commercial Amount</span>
+                                  <span className="text-rose-500">*</span>
                                 </label>
-
-                                <div className="relative group">
-                                  <div className="absolute left-4 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-semibold text-sm">
-                                    ₹
-                                  </div>
-                                  <input
-                                    id="input-amount"
-                                    type="number"
-                                    min="0"
-                                    step="100"
-                                    value={watch('amount') ? watch('amount') : ''}
-                                    onChange={(e) => {
-                                      const val = e.target.value === '' ? 0 : Number(e.target.value);
-                                      setValue('amount', val, { shouldValidate: true });
-                                    }}
-                                    placeholder="Enter base amount (e.g. 50000)"
-                                    className={cn("glass-input h-14 !pl-16 font-semibold text-lg text-slate-800 dark:text-white placeholder:font-normal placeholder:text-slate-400/70", c.focusBorder, c.focusRing)}
-                                  />
-                                </div>
-                                {errors.amount && <p className="text-xs font-medium text-rose-500 uppercase tracking-wide px-1">{errors.amount.message}</p>}
+                                {baseAmount > 0 && (
+                                  <span className="text-[11px] font-medium text-slate-400 dark:text-slate-500 italic max-w-[280px] truncate text-right">
+                                    {numberToWords(baseAmount)}
+                                  </span>
+                                )}
                               </div>
 
-                              {/* GST Type Selection */}
-                              <div className="space-y-2">
-                                <div className="flex items-center gap-1.5 px-1">
-                                  <Percent className="w-3.5 h-3.5 text-slate-400" />
-                                  <label className="text-xs font-medium uppercase tracking-widest text-slate-400 dark:text-slate-500 block">
-                                    GST Rate Bracket
-                                  </label>
+                              <div className="relative group">
+                                <div className="absolute left-3.5 top-1/2 -translate-y-1/2 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-white/10 text-indigo-600 dark:text-indigo-400 font-bold text-sm pointer-events-none select-none transition-colors group-focus-within:bg-indigo-600 group-focus-within:text-white shadow-2xs">
+                                  <span className="text-base leading-none">₹</span>
+                                  <span className="text-[10px] font-bold tracking-widest uppercase opacity-80">INR</span>
                                 </div>
-                                <Controller
-                                  name="gst_type"
-                                  control={methods.control}
-                                  render={({ field }) => (
-                                    <Select
-                                      value={field.value || 'no_gst'}
-                                      onValueChange={(val) => {
-                                        field.onChange(val);
-                                        const rate = (val === 'cgst_sgst_2_5' || val === 'igst_5') ? 5 : val === 'cgst_sgst_5' ? 10 : 0;
-                                        setValue('gst_rate', rate, { shouldValidate: true });
-                                      }}
-                                      placeholder="Select GST Type..."
-                                      buttonClassName={cn("glass-input h-14 font-medium text-sm text-slate-800 dark:text-white", c.focusBorder, c.focusRing)}
-                                    >
-                                      <SelectItem value="no_gst">No CGST / SGST (0% - Exempt)</SelectItem>
-                                      <SelectItem value="cgst_sgst_2_5">2.5% CGST + 2.5% SGST (5% Total)</SelectItem>
-                                      <SelectItem value="igst_5">5% IGST (5% Total)</SelectItem>
-                                    </Select>
+
+                                <input
+                                  id="input-amount"
+                                  type="number"
+                                  min="0"
+                                  step="100"
+                                  value={watch('amount') ? watch('amount') : ''}
+                                  onChange={(e) => {
+                                    const val = e.target.value === '' ? 0 : Number(e.target.value);
+                                    setValue('amount', val, { shouldValidate: true });
+                                  }}
+                                  placeholder="0"
+                                  className={cn(
+                                    "glass-input no-spin h-14 !pl-24 !pr-10 font-bold text-xl text-slate-900 dark:text-white placeholder:font-normal placeholder:text-slate-400/60 nums tracking-tight transition-all",
+                                    "border-slate-200/90 dark:border-white/10 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/15 dark:focus:ring-indigo-500/10 shadow-2xs"
                                   )}
                                 />
+
+                                {baseAmount > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setValue('amount', 0, { shouldValidate: true })}
+                                    className="absolute right-3.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition"
+                                    title="Clear amount"
+                                  >
+                                    <X className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                              </div>
+
+                              {/* Quick Add Chips */}
+                              <div className="flex flex-wrap items-center gap-1.5 px-1 pt-0.5">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1 mr-1">
+                                  <Sparkles className="w-3 h-3 text-indigo-500" /> Quick Add:
+                                </span>
+                                {[
+                                  { label: '+ ₹5,000', add: 5000 },
+                                  { label: '+ ₹10,000', add: 10000 },
+                                  { label: '+ ₹25,000', add: 25000 },
+                                  { label: '+ ₹50,000', add: 50000 },
+                                  { label: '+ ₹1,00,000', add: 100000 },
+                                ].map((preset) => (
+                                  <button
+                                    key={preset.label}
+                                    type="button"
+                                    onClick={() => {
+                                      const current = Number(watch('amount') || 0);
+                                      setValue('amount', current + preset.add, { shouldValidate: true });
+                                    }}
+                                    className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-white/5 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 border border-slate-200/80 dark:border-white/10 hover:border-indigo-300 dark:hover:border-indigo-800/60 transition active:scale-95 shadow-2xs"
+                                  >
+                                    {preset.label}
+                                  </button>
+                                ))}
+                              </div>
+
+                              {errors.amount && (
+                                <p className="text-xs font-medium text-rose-500 uppercase tracking-wide px-1">
+                                  {errors.amount.message}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Section 2: GST Rate Bracket Cards */}
+                            <div className="relative z-10 space-y-2.5 pt-2 border-t border-slate-200/60 dark:border-white/5">
+                              <div className="flex items-center justify-between px-1">
+                                <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
+                                  <Percent className="w-3.5 h-3.5 text-indigo-500" />
+                                  <span>GST Rate Bracket</span>
+                                  <span className="text-rose-500">*</span>
+                                </label>
+                                <span className="text-[11px] text-slate-400">
+                                  Choose applicable tax classification
+                                </span>
+                              </div>
+
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                {GST_RATE_OPTIONS.map((opt) => {
+                                  const isSelected = gstType === opt.type;
+                                  return (
+                                    <button
+                                      key={opt.type}
+                                      type="button"
+                                      role="radio"
+                                      aria-checked={isSelected}
+                                      onClick={() => {
+                                        setValue('gst_type', opt.type, { shouldValidate: true });
+                                        setValue('gst_rate', opt.rate, { shouldValidate: true });
+                                      }}
+                                      className={cn(
+                                        "relative flex flex-col justify-between p-3.5 rounded-2xl border text-left transition-all duration-200 outline-none group cursor-pointer",
+                                        isSelected
+                                          ? "bg-gradient-to-br from-indigo-50/90 to-purple-50/40 dark:from-indigo-950/50 dark:to-purple-950/20 border-indigo-500/80 dark:border-indigo-500 ring-2 ring-indigo-500/20 shadow-md shadow-indigo-500/10"
+                                          : "bg-white/70 dark:bg-white/[0.02] border-slate-200/80 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/20 hover:bg-slate-50/60 dark:hover:bg-white/[0.04]"
+                                      )}
+                                    >
+                                      <div className="flex items-center justify-between gap-2 w-full mb-2">
+                                        <div className="flex items-center gap-2 min-w-0">
+                                          <div
+                                            className={cn(
+                                              "w-4 h-4 rounded-full border flex items-center justify-center shrink-0 transition-all",
+                                              isSelected
+                                                ? "border-indigo-600 dark:border-indigo-400 bg-indigo-600 dark:bg-indigo-400"
+                                                : "border-slate-300 dark:border-white/20 group-hover:border-slate-400"
+                                            )}
+                                          >
+                                            {isSelected && <Check className="w-2.5 h-2.5 text-white stroke-[3]" />}
+                                          </div>
+                                          <span
+                                            className={cn(
+                                              "text-xs font-bold tracking-tight truncate transition-colors",
+                                              isSelected ? "text-slate-900 dark:text-white" : "text-slate-700 dark:text-slate-300"
+                                            )}
+                                          >
+                                            {opt.label}
+                                          </span>
+                                        </div>
+
+                                        <span
+                                          className={cn(
+                                            "text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0 transition-colors",
+                                            isSelected
+                                              ? "bg-indigo-600 text-white shadow-2xs"
+                                              : "bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-slate-400"
+                                          )}
+                                        >
+                                          {opt.rateBadge}
+                                        </span>
+                                      </div>
+
+                                      <div className="flex items-center justify-between w-full pt-1.5 border-t border-slate-100 dark:border-white/5">
+                                        <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                                          {opt.description}
+                                        </span>
+                                        <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 shrink-0 ml-2">
+                                          {opt.tag}
+                                        </span>
+                                      </div>
+                                    </button>
+                                  );
+                                })}
                               </div>
                             </div>
 
-                            {/* Live Tax Calculation Summary */}
-                            {Number(watch('amount') || 0) > 0 && (
-                              <div className="p-4 rounded-xl bg-slate-100/70 dark:bg-white/[0.03] border border-slate-200/80 dark:border-white/10 space-y-2 text-xs">
-                                <div className="flex justify-between items-center text-slate-600 dark:text-slate-300">
-                                  <span className="font-medium">Base Commercial Value:</span>
-                                  <span className="font-semibold text-slate-800 dark:text-white">₹{Number(watch('amount') || 0).toLocaleString('en-IN')}</span>
-                                </div>
-                                {watch('gst_type') === 'cgst_sgst_2_5' && (
-                                  <>
-                                    <div className="flex justify-between items-center text-indigo-600 dark:text-indigo-400">
-                                      <span>CGST (2.5%):</span>
-                                      <span className="font-semibold">₹{Math.round(Number(watch('amount') || 0) * 0.025).toLocaleString('en-IN')}</span>
+                            {/* Section 3: Live Tax Calculation & Total Valuation Card */}
+                            <div className="relative z-10 pt-2 border-t border-slate-200/60 dark:border-white/5">
+                              {baseAmount > 0 ? (
+                                <div className="rounded-2xl border border-slate-200/90 dark:border-white/10 bg-gradient-to-b from-white to-slate-50/70 dark:from-slate-900/60 dark:to-slate-950/80 shadow-md shadow-slate-900/5 overflow-hidden transition-all">
+                                  
+                                  {/* Summary Header */}
+                                  <div className="px-5 py-3 bg-slate-100/70 dark:bg-white/[0.02] border-b border-slate-200/60 dark:border-white/5 flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                      <Receipt className="w-4 h-4 text-indigo-500" />
+                                      <span className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-200">
+                                        Commercial Valuation Summary
+                                      </span>
                                     </div>
-                                    <div className="flex justify-between items-center text-indigo-600 dark:text-indigo-400">
-                                      <span>SGST (2.5%):</span>
-                                      <span className="font-semibold">₹{Math.round(Number(watch('amount') || 0) * 0.025).toLocaleString('en-IN')}</span>
-                                    </div>
-                                  </>
-                                )}
-                                {watch('gst_type') === 'igst_5' && (
-                                  <div className="flex justify-between items-center text-indigo-600 dark:text-indigo-400">
-                                    <span>IGST (5.0%):</span>
-                                    <span className="font-semibold">₹{Math.round(Number(watch('amount') || 0) * 0.05).toLocaleString('en-IN')}</span>
+                                    <span className={cn(
+                                      "text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full border",
+                                      gstType === 'no_gst'
+                                        ? "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/40"
+                                        : "bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800/40"
+                                    )}>
+                                      {gstType === 'no_gst' ? '✓ GST Exempt' : `${gstRate}% GST Active`}
+                                    </span>
                                   </div>
-                                )}
-                                {watch('gst_type') === 'cgst_sgst_5' && (
-                                  <>
-                                    <div className="flex justify-between items-center text-indigo-600 dark:text-indigo-400">
-                                      <span>CGST (5.0%):</span>
-                                      <span className="font-semibold">₹{Math.round(Number(watch('amount') || 0) * 0.05).toLocaleString('en-IN')}</span>
+
+                                  {/* Itemized Lines */}
+                                  <div className="p-5 space-y-3">
+                                    {/* Base Commercial Value */}
+                                    <div className="flex items-center justify-between text-xs py-0.5">
+                                      <div className="space-y-0.5">
+                                        <span className="font-semibold text-slate-700 dark:text-slate-200">Base Commercial Value</span>
+                                        <p className="text-[11px] text-slate-400">Agreed project fee before taxes</p>
+                                      </div>
+                                      <span className="font-bold text-sm text-slate-900 dark:text-white nums">
+                                        ₹{baseAmount.toLocaleString('en-IN')}
+                                      </span>
                                     </div>
-                                    <div className="flex justify-between items-center text-indigo-600 dark:text-indigo-400">
-                                      <span>SGST (5.0%):</span>
-                                      <span className="font-semibold">₹{Math.round(Number(watch('amount') || 0) * 0.05).toLocaleString('en-IN')}</span>
-                                    </div>
-                                  </>
-                                )}
-                                {(!watch('gst_type') || watch('gst_type') === 'no_gst') && (
-                                  <div className="flex justify-between items-center text-emerald-600 dark:text-emerald-400">
-                                    <span>Tax Status:</span>
-                                    <span className="font-semibold">Exempt (No CGST / SGST)</span>
+
+                                    <div className="h-px bg-slate-200/70 dark:bg-white/5" />
+
+                                    {/* Tax Breakdown */}
+                                    {gstType === 'cgst_sgst_2_5' && (
+                                      <div className="space-y-2 bg-indigo-50/40 dark:bg-indigo-950/20 p-3 rounded-xl border border-indigo-100/80 dark:border-indigo-900/30">
+                                        <div className="flex items-center justify-between text-xs text-indigo-900 dark:text-indigo-200">
+                                          <span className="flex items-center gap-1.5 font-medium">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                                            Central GST (CGST @ 2.5%)
+                                          </span>
+                                          <span className="font-bold nums text-indigo-600 dark:text-indigo-400">
+                                            + ₹{Math.round(baseAmount * 0.025).toLocaleString('en-IN')}
+                                          </span>
+                                        </div>
+                                        <div className="flex items-center justify-between text-xs text-indigo-900 dark:text-indigo-200">
+                                          <span className="flex items-center gap-1.5 font-medium">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                                            State GST (SGST @ 2.5%)
+                                          </span>
+                                          <span className="font-bold nums text-indigo-600 dark:text-indigo-400">
+                                            + ₹{Math.round(baseAmount * 0.025).toLocaleString('en-IN')}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {gstType === 'igst_5' && (
+                                      <div className="bg-indigo-50/40 dark:bg-indigo-950/20 p-3 rounded-xl border border-indigo-100/80 dark:border-indigo-900/30">
+                                        <div className="flex items-center justify-between text-xs text-indigo-900 dark:text-indigo-200">
+                                          <span className="flex items-center gap-1.5 font-medium">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                                            Integrated GST (IGST @ 5.0%)
+                                          </span>
+                                          <span className="font-bold nums text-indigo-600 dark:text-indigo-400">
+                                            + ₹{Math.round(baseAmount * 0.05).toLocaleString('en-IN')}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {gstType === 'cgst_sgst_5' && (
+                                      <div className="space-y-2 bg-indigo-50/40 dark:bg-indigo-950/20 p-3 rounded-xl border border-indigo-100/80 dark:border-indigo-900/30">
+                                        <div className="flex items-center justify-between text-xs text-indigo-900 dark:text-indigo-200">
+                                          <span className="flex items-center gap-1.5 font-medium">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                                            Central GST (CGST @ 5.0%)
+                                          </span>
+                                          <span className="font-bold nums text-indigo-600 dark:text-indigo-400">
+                                            + ₹{Math.round(baseAmount * 0.05).toLocaleString('en-IN')}
+                                          </span>
+                                        </div>
+                                        <div className="flex items-center justify-between text-xs text-indigo-900 dark:text-indigo-200">
+                                          <span className="flex items-center gap-1.5 font-medium">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                                            State GST (SGST @ 5.0%)
+                                          </span>
+                                          <span className="font-bold nums text-indigo-600 dark:text-indigo-400">
+                                            + ₹{Math.round(baseAmount * 0.05).toLocaleString('en-IN')}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {(!gstType || gstType === 'no_gst') && (
+                                      <div className="flex items-center justify-between text-xs py-1 px-3 bg-emerald-50/40 dark:bg-emerald-950/20 rounded-xl border border-emerald-100/80 dark:border-emerald-900/30">
+                                        <div className="space-y-0.5">
+                                          <span className="flex items-center gap-1.5 font-semibold text-emerald-800 dark:text-emerald-300">
+                                            <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                                            Tax Status: Exempt
+                                          </span>
+                                          <p className="text-[11px] text-slate-400">No GST applicable (Nil-rated / unregistered client)</p>
+                                        </div>
+                                        <span className="font-bold text-emerald-600 dark:text-emerald-400 nums">
+                                          ₹0 (0%)
+                                        </span>
+                                      </div>
+                                    )}
                                   </div>
-                                )}
-                                <div className="pt-2 border-t border-slate-200 dark:border-white/10 flex justify-between items-center text-sm font-bold text-slate-900 dark:text-white">
-                                  <span>Total Agreed Contract Value:</span>
-                                  <span className="text-emerald-600 dark:text-emerald-400">
-                                    ₹{totalContractValue.toLocaleString('en-IN')}
-                                  </span>
+
+                                  {/* Hero Grand Total Banner */}
+                                  <div className="p-5 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-indigo-500/10 dark:from-emerald-950/40 dark:via-slate-900 dark:to-indigo-950/40 border-t border-emerald-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                    <div className="space-y-1">
+                                      <div className="flex items-center gap-1.5">
+                                        <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                                        <span className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-white">
+                                          Total Agreed Contract Value
+                                        </span>
+                                      </div>
+                                      <p className="text-xs text-slate-500 dark:text-slate-400 font-medium italic">
+                                        {numberToWords(totalContractValue)}
+                                      </p>
+                                    </div>
+
+                                    <div className="text-left sm:text-right">
+                                      <div className="text-2xl sm:text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 nums tracking-tight">
+                                        ₹{totalContractValue.toLocaleString('en-IN')}
+                                      </div>
+                                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                                        Final Payable Total
+                                      </span>
+                                    </div>
+                                  </div>
+
                                 </div>
-                              </div>
-                            )}
+                              ) : (
+                                <div className="p-8 rounded-2xl border-2 border-dashed border-slate-200/80 dark:border-white/10 text-center bg-slate-50/50 dark:bg-white/[0.01] space-y-2">
+                                  <div className="w-10 h-10 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-500 mx-auto flex items-center justify-center">
+                                    <Calculator className="w-5 h-5" />
+                                  </div>
+                                  <h5 className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                                    Ready for Pricing Calculation
+                                  </h5>
+                                  <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                                    Enter the base commercial amount above to see instant tax calculations and the total contract value.
+                                  </p>
+                                </div>
+                              )}
+                            </div>
 
                           </div>
                         </div>
@@ -1090,10 +1425,22 @@ export function ProjectCreationWizard() {
                                   className="p-5 rounded-2xl bg-white dark:bg-[#151923] border border-slate-200 dark:border-white/10 shadow-sm relative group space-y-3.5"
                                 >
                                   <div className="flex items-center justify-between pb-2 border-b border-slate-100 dark:border-white/5">
-                                    <span className="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
-                                      <Target className="w-3.5 h-3.5" />
-                                      Milestone #{idx + 1}
-                                    </span>
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      <span className="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
+                                        <Target className="w-3.5 h-3.5" />
+                                        Milestone #{idx + 1}
+                                      </span>
+                                      {(() => {
+                                        const stage = WORKFLOW_STAGE_OPTIONS.find((s) => s.value === m.linked_stage);
+                                        if (!stage || stage.value === 'none') return null;
+                                        return (
+                                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 dark:bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border border-indigo-200/70 dark:border-indigo-500/30">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                                            Unlocks Stage {stage.step}: {stage.title}
+                                          </span>
+                                        );
+                                      })()}
+                                    </div>
                                     <button
                                       type="button"
                                       onClick={() => removeMilestoneRow(idx)}
@@ -1160,7 +1507,7 @@ export function ProjectCreationWizard() {
                                       <PremiumDatePicker
                                         value={m.due_date?.split('T')[0] || ''}
                                         onChange={(date) => updateMilestoneRow(idx, 'due_date', date)}
-                                        side="bottom"
+                                        side="left"
                                         triggerClassName="h-10 rounded-xl bg-slate-50 dark:bg-white/5 text-xs font-medium"
                                       />
                                     </div>
@@ -1176,14 +1523,48 @@ export function ProjectCreationWizard() {
                                         onValueChange={(val) => updateMilestoneRow(idx, 'linked_stage', val === 'none' ? null : val)}
                                         placeholder="-- No linked stage --"
                                         buttonClassName="glass-input h-10 text-xs text-slate-800 dark:text-white font-medium"
+                                        dropdownClassName="min-w-[340px]"
                                       >
-                                        <SelectItem value="none">-- No linked stage --</SelectItem>
-                                        <SelectItem value="data_collection">1. Data Collection</SelectItem>
-                                        <SelectItem value="field_assigned">2. Field Team Assignment</SelectItem>
-                                        <SelectItem value="field_work">3. Survey Collection</SelectItem>
-                                        <SelectItem value="data_sync">4. Survey Validation</SelectItem>
-                                        <SelectItem value="final_review">5. Deliverable Review</SelectItem>
-                                        <SelectItem value="completed">6. Handed Over / Completed</SelectItem>
+                                        {WORKFLOW_STAGE_OPTIONS.map((stg) => (
+                                          <SelectItem
+                                            key={stg.value}
+                                            value={stg.value}
+                                            label={stg.value === 'none' ? '-- No linked stage --' : `${stg.step}. ${stg.title}`}
+                                            className="py-2.5"
+                                          >
+                                            {stg.value === 'none' ? (
+                                              <div className="py-0.5">
+                                                <span className="text-xs text-slate-400 dark:text-slate-500 font-normal italic block">
+                                                  -- No linked stage --
+                                                </span>
+                                                <span className="text-[10px] text-slate-400/80 dark:text-slate-500 block">
+                                                  Unrestricted (does not block progress)
+                                                </span>
+                                              </div>
+                                            ) : (
+                                              <div className="flex items-start gap-2.5 w-full py-0.5">
+                                                <span className="w-6 h-6 rounded-md bg-indigo-50 dark:bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold flex items-center justify-center shrink-0 border border-indigo-200/60 dark:border-indigo-500/30 mt-0.5">
+                                                  {stg.step}
+                                                </span>
+                                                <div className="flex-1 min-w-0">
+                                                  <div className="flex items-center justify-between gap-1.5">
+                                                    <span className="font-semibold text-xs text-slate-800 dark:text-white">
+                                                      {stg.title}
+                                                    </span>
+                                                    {stg.role && (
+                                                      <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-slate-400 shrink-0">
+                                                        {stg.role}
+                                                      </span>
+                                                    )}
+                                                  </div>
+                                                  <p className="text-[10px] text-slate-400 dark:text-slate-500 leading-tight mt-0.5 truncate">
+                                                    {stg.desc}
+                                                  </p>
+                                                </div>
+                                              </div>
+                                            )}
+                                          </SelectItem>
+                                        ))}
                                       </Select>
                                     </div>
 
@@ -1326,7 +1707,13 @@ export function ProjectCreationWizard() {
                                         </p>
                                         <p className="text-[11px] text-slate-400">
                                           {m.due_date ? `Due: ${new Date(m.due_date).toLocaleDateString('en-IN')}` : 'No due date'}
-                                          {m.linked_stage ? ` • ${m.linked_stage.replace('_', ' ')}` : ''}
+                                          {(() => {
+                                            const stg = WORKFLOW_STAGE_OPTIONS.find((s) => s.value === m.linked_stage);
+                                            if (stg && stg.value !== 'none') {
+                                              return ` • Unlocks: Stage ${stg.step} (${stg.title})`;
+                                            }
+                                            return m.linked_stage ? ` • ${m.linked_stage.replace('_', ' ')}` : '';
+                                          })()}
                                           {m.is_activation_gate ? ' • Activation Gate' : ''}
                                         </p>
                                       </div>

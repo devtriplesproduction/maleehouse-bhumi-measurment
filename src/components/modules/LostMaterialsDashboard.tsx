@@ -16,11 +16,13 @@ import {
   Phone,
   Mail,
   ChevronDown,
-  Loader2
+  Loader2,
+  Layers
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { PageHeader } from "@/components/modules/PageHeader";
 import { updateLostMaterialResolutionAction } from "@/actions/field.actions";
+import { parseLostReason } from "@/components/modules/SubmitMaterialsModal";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -410,9 +412,22 @@ export function LostMaterialsDashboard({ initialMaterials }: LostMaterialsDashbo
 
                       {/* Reason */}
                       <td className="py-3.5 px-4 max-w-xs">
-                        <p className="text-slate-700 dark:text-slate-300 font-medium italic">
-                          &ldquo;{mat.lost_reason || "No explanation provided"}&rdquo;
-                        </p>
+                        {(() => {
+                          const parsed = parseLostReason(mat.lost_reason);
+                          return (
+                            <div className="space-y-1">
+                              {parsed.lostScopeText && (
+                                <div className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">
+                                  <Layers className="w-3 h-3 text-rose-500 shrink-0" />
+                                  <span className="truncate max-w-[200px]" title={parsed.lostScopeText}>{parsed.lostScopeText}</span>
+                                </div>
+                              )}
+                              <p className="text-slate-700 dark:text-slate-300 font-medium italic text-xs leading-relaxed">
+                                &ldquo;{parsed.reasonText || "No explanation provided"}&rdquo;
+                              </p>
+                            </div>
+                          );
+                        })()}
                       </td>
 
                       {/* Reporter / Date */}

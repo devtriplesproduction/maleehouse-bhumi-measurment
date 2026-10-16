@@ -19,7 +19,9 @@ import {
   CreditCard,
   Banknote,
   ArrowUpRight,
-  SlidersHorizontal
+  SlidersHorizontal,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import { PageHeader } from "@/components/modules/PageHeader";
 import NewPrintJobDialog from "./NewPrintJobDialog";
@@ -116,13 +118,35 @@ export default function PrintDeskClient({
     });
   }, [jobs, searchTerm, statusFilter, paperFilter]);
 
-  const indexOfLastJob = currentPage * itemsPerPage;
-  const indexOfFirstJob = indexOfLastJob - itemsPerPage;
-  const currentJobs = filteredJobs.slice(indexOfFirstJob, indexOfLastJob);
-  const totalPages = Math.ceil(filteredJobs.length / itemsPerPage);
+  const totalItems = filteredJobs.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage));
+  const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+
+  const startIndex = (safeCurrentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+  const currentJobs = useMemo(() => {
+    return filteredJobs.slice(startIndex, endIndex);
+  }, [filteredJobs, startIndex, endIndex]);
+
+  const fromItem = totalItems === 0 ? 0 : startIndex + 1;
+  const toItem = endIndex;
+
+  const getPageNumbers = () => {
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    if (safeCurrentPage <= 4) {
+      return [1, 2, 3, 4, 5, "...", totalPages];
+    }
+    if (safeCurrentPage >= totalPages - 3) {
+      return [1, "...", totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+    }
+    return [1, "...", safeCurrentPage - 1, safeCurrentPage, safeCurrentPage + 1, "...", totalPages];
+  };
 
   const handleJobCreated = (newJob: any) => {
     setJobs([newJob, ...jobs]);
+    setCurrentPage(1);
     // Optional auto-open receipt after creating
     setReceiptModalJob(newJob);
   };
@@ -437,25 +461,61 @@ export default function PrintDeskClient({
         </div>
         
         {/* Pagination Bar */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between px-6 py-3.5 border-t border-slate-100 dark:border-white/10 bg-slate-50/60 dark:bg-slate-800/40">
+        {filteredJobs.length > 0 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-3.5 border-t border-slate-100 dark:border-white/10 bg-slate-50/60 dark:bg-slate-800/40 gap-3">
             <div className="text-xs text-slate-500 font-medium">
-              Showing <span className="font-bold text-slate-900 dark:text-white">{indexOfFirstJob + 1}</span> to <span className="font-bold text-slate-900 dark:text-white">{Math.min(indexOfLastJob, filteredJobs.length)}</span> of <span className="font-bold text-slate-900 dark:text-white">{filteredJobs.length}</span> print jobs
+              Showing <span className="font-bold text-slate-900 dark:text-white">{fromItem}</span> to{" "}
+              <span className="font-bold text-slate-900 dark:text-white">{toItem}</span> of{" "}
+              <span className="font-bold text-slate-900 dark:text-white">{totalItems}</span> print jobs
             </div>
-            <div className="flex space-x-2">
+            
+            <div className="flex items-center gap-1.5">
               <button
+                type="button"
                 onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
-                className="px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                disabled={safeCurrentPage === 1}
+                className="flex items-center justify-center w-8 h-8 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95 shadow-2xs"
+                title="Previous Page"
               >
-                Previous
+                <ChevronLeft className="w-4 h-4" />
               </button>
+
+              <div className="flex items-center gap-1">
+                {getPageNumbers().map((item, idx) => {
+                  if (typeof item === "string") {
+                    return (
+                      <span key={`ellipsis-${idx}`} className="px-1.5 text-slate-400 text-xs font-semibold">
+                        ...
+                      </span>
+                    );
+                  }
+                  const isActive = item === safeCurrentPage;
+                  return (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => setCurrentPage(item)}
+                      className={cn(
+                        "w-8 h-8 rounded-xl text-xs font-bold transition-all active:scale-95",
+                        isActive
+                          ? "bg-purple-600 text-white shadow-xs"
+                          : "border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"
+                      )}
+                    >
+                      {item}
+                    </button>
+                  );
+                })}
+              </div>
+
               <button
+                type="button"
                 onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                disabled={currentPage === totalPages}
-                className="px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                disabled={safeCurrentPage === totalPages}
+                className="flex items-center justify-center w-8 h-8 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-30 disabled:cursor-not-allowed transition-all active:scale-95 shadow-2xs"
+                title="Next Page"
               >
-                Next
+                <ChevronRight className="w-4 h-4" />
               </button>
             </div>
           </div>

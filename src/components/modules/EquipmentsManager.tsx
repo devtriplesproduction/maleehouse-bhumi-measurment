@@ -36,9 +36,9 @@ interface EquipmentsManagerProps {
 
 const CATEGORY_PRESETS = [
   "All",
+  "GNSS / Satellite",
   "Aerial Survey",
   "Optical Survey",
-  "GNSS / Satellite",
   "Accessories",
   "Measuring Tools",
 ];
@@ -74,7 +74,7 @@ export function EquipmentsManager({ initialCatalog, userRole }: EquipmentsManage
 
   // Form State
   const [formName, setFormName] = useState("");
-  const [formCategory, setFormCategory] = useState("Aerial Survey");
+  const [formCategory, setFormCategory] = useState("GNSS / Satellite");
   const [formCode, setFormCode] = useState("");
   const [formDescription, setFormDescription] = useState("");
   const [formSubparts, setFormSubparts] = useState<

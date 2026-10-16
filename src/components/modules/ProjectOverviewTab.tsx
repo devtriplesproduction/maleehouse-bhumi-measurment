@@ -83,6 +83,7 @@ export default function ProjectOverviewTab({
   const isAccountant = userRole === 'accountant';
   const isEngineer = userRole === 'engineer';
   const isSales = userRole === 'sales';
+  const isField = userRole?.toLowerCase() === 'field';
 
   const isSalesAndHandedOver = project.status !== 'lead_created';
   
@@ -167,8 +168,6 @@ export default function ProjectOverviewTab({
       }
     });
   };
-
-  const isField = userRole === 'field';
 
   const hasAccessToOps = isAdmin || isClaimedByMe || ((isEngineer || isField) && !isProjectClosed);
 
@@ -403,13 +402,15 @@ export default function ProjectOverviewTab({
       </div>
 
       {/* Material Assignment - Full Width */}
-      <ProjectMaterialsSection 
-        projectId={project.id}
-        assignments={teamMembers || []}
-        staff={allUsers || []}
-        canAssign={(isAdmin || isEngineer) && !isProjectClosed}
-        initialMaterials={initialMaterials}
-      />
+      {!isField && (
+        <ProjectMaterialsSection 
+          projectId={project.id}
+          assignments={teamMembers || []}
+          staff={allUsers || []}
+          canAssign={(isAdmin || isEngineer) && !isProjectClosed}
+          initialMaterials={initialMaterials}
+        />
+      )}
 
     </div>
   );

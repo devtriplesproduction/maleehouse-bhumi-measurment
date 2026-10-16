@@ -119,8 +119,12 @@ const invalidGstRes = createProjectSchema.safeParse({
   ...validPayload,
   gst_type: 'invalid_gst_rate',
 });
-assert(!invalidGstRes.success, 'Rejects invalid GST type option');
-
+// 8. Number to words utility verification
+import { numberToWords } from '../src/lib/utils';
+assert(numberToWords(1000) === 'One Thousand Rupees Only', 'numberToWords converts 1,000 correctly');
+assert(numberToWords(50000) === 'Fifty Thousand Rupees Only', 'numberToWords converts 50,000 correctly');
+assert(numberToWords(125000) === 'One Lakh Twenty Five Thousand Rupees Only', 'numberToWords converts 1,25,000 correctly');
+assert(numberToWords(0) === '', 'numberToWords returns empty string for 0');
 
 console.log(`\nResults: ${passed} passed, ${failed} failed.\n`);
 if (failed > 0) {

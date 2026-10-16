@@ -14,6 +14,7 @@ export interface SelectProps {
   children: React.ReactNode;
   className?: string;
   buttonClassName?: string;
+  dropdownClassName?: string;
   disabled?: boolean;
   align?: "left" | "right";
   id?: string;
@@ -33,10 +34,17 @@ const SelectContext = React.createContext<{
   setOpen: (open: boolean) => void;
 } | null>(null);
 
-export function Select({ value, onValueChange, placeholder, children, className, buttonClassName, disabled, align = "left", id }: SelectProps) {
+export function Select({ value, onValueChange, placeholder, children, className, buttonClassName, dropdownClassName, disabled, align = "left", id }: SelectProps) {
   const [open, setOpen] = React.useState(false);
   const [mounted, setMounted] = React.useState(false);
-  const [coords, setCoords] = React.useState({ top: 0, left: 0, width: 0 });
+  const [placement, setPlacement] = React.useState<"bottom" | "top">("bottom");
+  const [coords, setCoords] = React.useState<{
+    top?: number;
+    bottom?: number;
+    left: number;
+    width: number;
+    maxHeight: number;
+  }>({ left: 0, width: 0, maxHeight: 320 });
   const containerRef = React.useRef<HTMLDivElement>(null);
   const dropdownRef = React.useRef<HTMLDivElement>(null);
 
@@ -47,10 +55,31 @@ export function Select({ value, onValueChange, placeholder, children, className,
   const updateCoords = () => {
     if (containerRef.current) {
       const rect = containerRef.current.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+      const viewportWidth = window.innerWidth;
+      const spaceBelow = viewportHeight - rect.bottom;
+      const spaceAbove = rect.top;
+
+      // Smart flip: open upwards if space below is tight (<280px) and space above is larger
+      const shouldOpenUp = spaceBelow < 280 && spaceAbove > spaceBelow;
+      const availableSpace = shouldOpenUp ? spaceAbove - 20 : spaceBelow - 20;
+      const maxHeight = Math.min(360, Math.max(160, availableSpace));
+
+      const minWidth = Math.max(rect.width, 240);
+      let left = rect.left;
+      if (align === "right" || left + minWidth > viewportWidth - 12) {
+        left = Math.max(12, rect.right - minWidth);
+      } else {
+        left = Math.max(12, left);
+      }
+
+      setPlacement(shouldOpenUp ? "top" : "bottom");
       setCoords({
-        top: rect.bottom + window.scrollY + 6,
-        left: rect.left + window.scrollX,
+        top: shouldOpenUp ? undefined : rect.bottom + 6,
+        bottom: shouldOpenUp ? viewportHeight - rect.top + 6 : undefined,
+        left,
         width: rect.width,
+        maxHeight,
       });
     }
   };
@@ -60,6 +89,12 @@ export function Select({ value, onValueChange, placeholder, children, className,
     updateCoords();
     setOpen(!open);
   };
+
+  React.useEffect(() => {
+    if (open) {
+      updateCoords();
+    }
+  }, [open]);
 
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -116,25 +151,31 @@ export function Select({ value, onValueChange, placeholder, children, className,
         <motion.div 
           ref={dropdownRef}
           key="select-dropdown"
-          initial={{ opacity: 0, y: -8, scale: 0.98 }}
+          initial={{ opacity: 0, y: placement === "top" ? 6 : -6, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: -4, scale: 0.98 }}
+          exit={{ opacity: 0, y: placement === "top" ? 4 : -4, scale: 0.98 }}
           transition={{ duration: 0.15, ease: "easeOut" }}
           style={{
-            position: "absolute",
+            position: "fixed",
             top: coords.top,
+            bottom: coords.bottom,
             left: coords.left,
             width: coords.width,
+            minWidth: Math.max(coords.width, 240),
             zIndex: 99999
           }}
           className={cn(
-            "z-[99999] rounded-xl overflow-hidden",
+            "z-[99999] rounded-xl overflow-hidden flex flex-col",
             "bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl",
             "border border-slate-200/80 dark:border-white/10",
-            "shadow-xl shadow-slate-200/50 dark:shadow-black/50"
+            "shadow-xl shadow-slate-200/50 dark:shadow-black/50",
+            dropdownClassName
           )}
         >
-          <div className="p-1.5 max-h-64 overflow-auto scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-white/10 scrollbar-track-transparent">
+          <div 
+            style={{ maxHeight: coords.maxHeight }}
+            className="p-1.5 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-white/10 scrollbar-track-transparent custom-scrollbar"
+          >
             {React.Children.count(children) > 0 ? (
               children
             ) : (
@@ -195,24 +236,24 @@ export function SelectItem({
         context?.setOpen(false);
       }}
       className={cn(
-        "relative flex w-full cursor-pointer select-none items-center rounded-lg py-2.5 pl-9 pr-4 text-sm font-medium outline-none transition-all duration-200 text-left",
+        "relative flex w-full cursor-pointer select-none items-center rounded-lg py-2 pl-8 pr-3 text-xs sm:text-sm font-medium outline-none transition-all duration-200 text-left",
         "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white",
         isSelected && "text-indigo-600 dark:text-indigo-400 font-semibold bg-indigo-50/80 dark:bg-indigo-500/10",
         className
       )}
     >
-      <span className="absolute left-3 flex h-4 w-4 items-center justify-center pointer-events-none">
+      <span className="absolute left-2.5 top-2.5 flex h-4 w-4 items-center justify-center pointer-events-none">
         {isSelected && (
           <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ type: "spring", stiffness: 300, damping: 20 }}
           >
-            <Check className="h-4 w-4 text-indigo-600 dark:text-indigo-400 stroke-[2.5]" />
+            <Check className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400 stroke-[2.5]" />
           </motion.div>
         )}
       </span>
-      <div className="truncate w-full">{children}</div>
+      <div className="w-full">{children}</div>
     </button>
   );
 }

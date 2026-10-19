@@ -3,7 +3,7 @@
 -- PURPOSE: Add missing RLS policies for EOD Reports and Leaves
 -- ============================================================
 
- 
+-- EOD Reports Policies
 CREATE POLICY "Users can read own EOD reports" ON eod_reports
   FOR SELECT USING (user_id = auth.uid());
 

@@ -166,12 +166,12 @@ export default function ManageDocTypesModal({
         onClick={e => e.stopPropagation()}
       >
         {/* Top Accent Gradient Line */}
-        <div className="h-1.5 w-full bg-gradient-to-r from-emerald-600 to-emerald-500 shrink-0" />
+        <div className="h-1.5 w-full bg-gradient-to-r from-purple-600 via-indigo-600 to-violet-500 shrink-0" />
 
         {/* Modal Header */}
         <div className="px-6 py-5 border-b border-slate-100 dark:border-white/10 flex justify-between items-center bg-slate-50/70 dark:bg-slate-800/40 shrink-0">
           <div className="flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-emerald-600 to-emerald-500 flex items-center justify-center text-white shadow-md shadow-emerald-500/25 ring-4 ring-emerald-50 dark:ring-emerald-950/40">
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-purple-500/25 ring-4 ring-purple-50 dark:ring-purple-950/40">
               <FileText className="w-5 h-5" />
             </div>
             <div>

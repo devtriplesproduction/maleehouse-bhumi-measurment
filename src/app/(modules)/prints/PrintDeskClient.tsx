@@ -163,9 +163,9 @@ export default function PrintDeskClient({
         title={
           <div className="flex items-center gap-3">
             <span className="text-3xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-              Print <span className="bg-gradient-to-r from-emerald-600 to-emerald-500 bg-clip-text text-transparent">Desk</span>
+              Print <span className="bg-gradient-to-r from-purple-600 via-indigo-600 to-violet-600 bg-clip-text text-transparent">Desk</span>
             </span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-200/60 shadow-xs">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200/60 shadow-xs">
               <Sparkles className="w-3.5 h-3.5" /> Front Operations
             </span>
           </div>
@@ -179,12 +179,12 @@ export default function PrintDeskClient({
               onClick={() => setIsManageTypesOpen(true)}
               className="flex items-center gap-2 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-white/10 px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all shadow-xs active:scale-[0.98]"
             >
-              <SlidersHorizontal className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+              <SlidersHorizontal className="h-4 w-4 text-purple-600 dark:text-purple-400" />
               <span>Doc Types & Rates</span>
             </button>
             <button
               onClick={() => setIsNewJobOpen(true)}
-              className="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 active:scale-[0.98] text-white px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all shadow-md shadow-emerald-500/25"
+              className="flex items-center gap-2 bg-gradient-to-r from-purple-600 via-indigo-600 to-violet-600 hover:from-purple-700 hover:to-indigo-700 active:scale-[0.98] text-white px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all shadow-md shadow-purple-500/25"
             >
               <Plus className="h-4 w-4" />
               <span>New Print Job</span>

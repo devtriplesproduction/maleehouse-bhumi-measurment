@@ -271,6 +271,9 @@ export function ProjectDetailTabs({
                   userRole={userRole}
                   isFrozen={localProject.is_frozen}
                   history={history}
+                  activityLogs={activityLogs}
+                  projectCreatedAt={localProject.created_at}
+                  projectUpdatedAt={localProject.updated_at}
                 />
               </div>
             )}

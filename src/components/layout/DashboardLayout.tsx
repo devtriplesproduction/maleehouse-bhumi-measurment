@@ -50,6 +50,7 @@ export function DashboardLayout({
   return (
     <AutoLogout>
       <div className="flex h-screen overflow-hidden bg-[#fcfcfd] dark:bg-[#080b14] text-slate-900 dark:text-white font-sans transition-colors duration-300">
+        <div className="fixed inset-0 pointer-events-none z-0 mesh-light dark:mesh-dark opacity-100 dark:opacity-40" />
         {renderSidebar()}
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative z-10">
           <RealtimeProvider>

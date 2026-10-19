@@ -56,8 +56,8 @@ export function Topbar() {
         {/* User profile */}
         <div className="group relative flex items-center gap-2.5 cursor-pointer">
           {/* Avatar */}
-          <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center flex-shrink-0">
-            <span className="text-white text-xs font-semibold">{initials}</span>
+          <div className="w-8 h-8 rounded-full bg-yellow-400 text-slate-950 flex items-center justify-center flex-shrink-0 shadow-[0_2px_12px_rgba(250,204,21,0.5)] font-black">
+            <span className="text-xs">{initials}</span>
           </div>
 
           {/* Name + role (desktop) */}
@@ -74,17 +74,17 @@ export function Topbar() {
 
           {/* Dropdown Menu Container */}
           <div className="absolute top-full right-0 pt-2 w-52 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 pointer-events-none group-hover:pointer-events-auto z-50">
-            <div className="glass-card border-indigo-500/20 shadow-2xl py-2 overflow-hidden bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl">
+            <div className="glass-card border-yellow-400/30 shadow-2xl py-2 overflow-hidden bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl">
               <div className="px-4 py-3 border-b border-slate-100 dark:border-white/10 mb-1 bg-slate-50/50 dark:bg-white/5">
                 <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{user?.name || "User"}</p>
-                <p className="text-[10px] text-indigo-500 dark:text-indigo-400 font-black uppercase tracking-widest truncate mt-0.5">{role?.replace("_", " ") || "Member"}</p>
+                <p className="text-[10px] text-yellow-600 dark:text-yellow-400 font-extrabold uppercase tracking-widest truncate mt-0.5">{role?.replace("_", " ") || "Member"}</p>
               </div>
               
               <Link
                 href="/profile"
                 className="flex items-center gap-3 w-full text-left px-4 py-3 text-[13px] text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/5 transition-all font-bold group/profile"
               >
-                <User className="w-4 h-4 text-slate-400 group-hover/profile:text-indigo-500 transition-colors" />
+                <User className="w-4 h-4 text-slate-400 group-hover/profile:text-yellow-500 transition-colors" />
                 My Profile
               </Link>
 

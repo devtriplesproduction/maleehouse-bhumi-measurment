@@ -36,10 +36,11 @@ export function BaseSidebar({ links }: BaseSidebarProps) {
   }, [pathname, setMobileOpen]);
 
   const currentTheme = {
-    bg: "bg-blue-500/10",
-    text: "text-blue-600 dark:text-blue-400",
-    border: "border-blue-500/10",
-    logoBg: "bg-blue-600"
+    bg: "bg-yellow-400/20 dark:bg-yellow-400/15",
+    text: "text-slate-900 dark:text-yellow-300 font-extrabold",
+    icon: "text-yellow-500 dark:text-yellow-400",
+    border: "border-yellow-400/50 dark:border-yellow-400/40",
+    logoBg: "bg-yellow-400 text-slate-950 font-black shadow-[0_2px_14px_rgba(250,204,21,0.55)]"
   };
 
   return (
@@ -62,7 +63,7 @@ export function BaseSidebar({ links }: BaseSidebarProps) {
       >
         {/* ── Logo / Brand ── */}
         <div className="flex h-16 items-center border-b border-slate-200 dark:border-white/10 flex-shrink-0 px-5 gap-3">
-          <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 text-white font-black text-sm", currentTheme.logoBg)}>
+          <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 font-black text-sm", currentTheme.logoBg)}>
             <span>M</span>
           </div>
           <div className="min-w-0">
@@ -100,7 +101,7 @@ export function BaseSidebar({ links }: BaseSidebarProps) {
                       <Icon
                         className={cn(
                           "w-[18px] h-[18px] flex-shrink-0",
-                          isAnyChildActive ? currentTheme.text.split(' ')[0] : "text-gray-400"
+                          isAnyChildActive ? currentTheme.icon : "text-gray-400"
                         )}
                         strokeWidth={isAnyChildActive ? 2.2 : 1.8}
                       />
@@ -161,7 +162,7 @@ export function BaseSidebar({ links }: BaseSidebarProps) {
                 <Icon
                   className={cn(
                     "w-[18px] h-[18px] flex-shrink-0",
-                    isActive ? currentTheme.text.split(' ')[0] : "text-gray-400 group-hover:text-gray-600"
+                    isActive ? currentTheme.icon : "text-gray-400 group-hover:text-gray-600"
                   )}
                   strokeWidth={isActive ? 2.2 : 1.8}
                 />
@@ -186,7 +187,7 @@ export function BaseSidebar({ links }: BaseSidebarProps) {
             <User
               className={cn(
                 "w-[18px] h-[18px] flex-shrink-0",
-                pathname === "/profile" ? currentTheme.text.split(' ')[0] : "text-gray-400"
+                pathname === "/profile" ? currentTheme.icon : "text-gray-400"
               )}
               strokeWidth={pathname === "/profile" ? 2.2 : 1.8}
             />

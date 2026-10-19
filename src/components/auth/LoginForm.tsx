@@ -48,14 +48,14 @@ export function LoginForm() {
             Work Email
           </label>
           <div className="relative group">
-            <Mail className="pointer-events-none absolute left-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-slate-300 transition-colors group-focus-within:text-blue-500" />
+            <Mail className="pointer-events-none absolute left-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-slate-300 transition-colors group-focus-within:text-yellow-500" />
             <input
               type="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               required
               autoComplete="email"
-              className="h-12 w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 text-[14px] font-medium text-slate-900 shadow-[0_2px_10px_rgba(15,23,42,0.02)] outline-none transition-all placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+              className="h-12 w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 text-[14px] font-medium text-slate-900 shadow-[0_2px_10px_rgba(15,23,42,0.02)] outline-none transition-all placeholder:text-slate-400 focus:border-yellow-400 focus:ring-4 focus:ring-yellow-400/25"
               placeholder="name@company.com"
             />
           </div>
@@ -66,14 +66,14 @@ export function LoginForm() {
             Password
           </label>
           <div className="relative group">
-            <Lock className="pointer-events-none absolute left-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-slate-300 transition-colors group-focus-within:text-blue-500" />
+            <Lock className="pointer-events-none absolute left-4 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-slate-300 transition-colors group-focus-within:text-yellow-500" />
             <input
               type={showPassword ? "text" : "password"}
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               required
               autoComplete="current-password"
-              className="h-12 w-full rounded-xl border border-slate-200 bg-white pl-11 pr-11 text-[14px] font-medium text-slate-900 shadow-[0_2px_10px_rgba(15,23,42,0.02)] outline-none transition-all placeholder:text-slate-400 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10"
+              className="h-12 w-full rounded-xl border border-slate-200 bg-white pl-11 pr-11 text-[14px] font-medium text-slate-900 shadow-[0_2px_10px_rgba(15,23,42,0.02)] outline-none transition-all placeholder:text-slate-400 focus:border-yellow-400 focus:ring-4 focus:ring-yellow-400/25"
               placeholder="••••••••"
             />
             <button
@@ -96,11 +96,11 @@ export function LoginForm() {
         <button
           type="submit"
           disabled={isPending}
-          className="flex h-12 w-full items-center justify-center gap-2.5 rounded-xl bg-blue-600 text-[15px] font-semibold text-white shadow-[0_8px_20px_rgba(0,100,224,0.25)] transition-all hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-70 mt-1"
+          className="flex h-12 w-full items-center justify-center gap-2.5 rounded-xl bg-yellow-400 hover:bg-yellow-300 text-slate-950 text-[15px] font-black shadow-[0_8px_25px_rgba(250,204,21,0.45)] transition-all hover:shadow-[0_10px_30px_rgba(250,204,21,0.6)] disabled:cursor-not-allowed disabled:opacity-70 mt-1 active:scale-[0.99]"
         >
           {isPending ? (
             <>
-              <span className="h-4 w-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+              <span className="h-4 w-4 border-2 border-slate-950/20 border-t-slate-950 rounded-full animate-spin" />
               Signing in...
             </>
           ) : (

@@ -62,16 +62,17 @@ export function BaseSidebar({ links }: BaseSidebarProps) {
         )}
       >
         {/* ── Logo / Brand ── */}
-        <div className="flex h-16 items-center border-b border-slate-200 dark:border-white/10 flex-shrink-0 px-5 gap-3">
-          <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 font-black text-sm", currentTheme.logoBg)}>
-            <span>M</span>
-          </div>
-          <div className="min-w-0">
-            <p className="text-sm font-bold text-slate-900 dark:text-white truncate leading-tight tracking-tight">
-              Malee House
-            </p>
-            <p className="text-[10px] text-slate-400 dark:text-slate-500 font-black uppercase tracking-widest leading-tight">Survey Workflow</p>
-          </div>
+        <div className="flex h-16 items-center border-b border-slate-200 dark:border-white/10 flex-shrink-0 px-4">
+          <Link
+            href={links.find((l) => l.href)?.href || "/admin"}
+            className="flex items-center w-full group py-1"
+          >
+            <img
+              src="/maleehouse Logo.png"
+              alt="Malee House"
+              className="h-10 w-auto max-w-[200px] object-contain transition-transform duration-200 group-hover:scale-[1.02] dark:bg-white/95 dark:px-2.5 dark:py-1 dark:rounded-lg"
+            />
+          </Link>
         </div>
 
         {/* ── Navigation ── */}
